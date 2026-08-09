@@ -116,6 +116,30 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [topEmbed] });
     }
 
+    // Lệnh xem bảng xếp hạng Top Tiền Cọc (!topcoc)
+    if (message.content === '!topcoc') {
+        if (Object.keys(staffTotalDeposits).length === 0) {
+            return message.reply('📊 Hiện tại chưa có Staff nào có dữ liệu tiền cọc.');
+        }
+
+        const sortedDepositStaff = Object.entries(staffTotalDeposits)
+            .sort((a, b) => b[1] - a[1]);
+
+        let description = '';
+        sortedDepositStaff.forEach(([staffId, totalDeposit], index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `**#${index + 1}**`;
+            description += `${medal} <@${staffId}> — **${formatVND(totalDeposit)}**\n`;
+        });
+
+        const topDepositEmbed = new EmbedBuilder()
+            .setTitle('🏆 BẢNG XẾP HẠNG TOP TIỀN CỌC GDTG')
+            .setDescription(description)
+            .setColor('#00ffcc')
+            .setTimestamp();
+
+        return message.reply({ embeds: [topDepositEmbed] });
+    }
+
     // Lệnh kiểm tra chỉ số của Staff bất kỳ (!stats @staff)
     if (message.content.startsWith('!stats')) {
         const targetUser = message.mentions.users.first();
