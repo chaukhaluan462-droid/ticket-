@@ -48,7 +48,7 @@ client.on('messageCreate', async message => {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('create_ticket')
-                .setLabel('Tạo Ticket')
+                .setLabel('Tạo Ticket GDTG')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('📩'),
             new ButtonBuilder()
