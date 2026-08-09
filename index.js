@@ -118,11 +118,6 @@ client.on('messageCreate', async message => {
                 .setLabel('Tạo Ticket GDTG')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('📩'),
-            new ButtonBuilder()
-                .setCustomId('support_ticket')
-                .setLabel('Hỗ Trợ')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🎧')
         );
 
         await message.channel.send({ embeds: [embed], components: [row] });
