@@ -135,6 +135,14 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '❌ Bạn không thể tự nhận ticket do chính mình tạo ra!', ephemeral: true });
             }
 
+            // 🛑 KIỂM TRA XEM TICKET ĐÃ CÓ AI NHẬN CHƯA
+            if (ticketData[channel.id] && ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
+                return interaction.reply({ 
+                    content: `❌ Ticket này đã được tiếp nhận trước đó bởi **${ticketData[channel.id].claimer}** rồi! Bạn không thể nhận đè nữa.`, 
+                    ephemeral: true 
+                });
+            }
+
             if (ticketData[channel.id]) {
                 ticketData[channel.id].claimer = `${staff.tag} (<@${staff.id}>)`;
             }
@@ -146,10 +154,10 @@ client.on('interactionCreate', async interaction => {
             if (welcomeMessage) {
                 const oldEmbed = welcomeMessage.embeds[0];
 
-                // 2. Tạo Embed mới với trạng thái đã được cập nhật tên Staff
+                // 2. Tạo Embed mới với trạng thái đã được cập nhật tên Staff đầu tiên nhận
                 const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(
                     { name: '📌 Trạng thái', value: `\`\`\`ini\n[ Đã được tiếp nhận bởi ${staff.tag} ]\n\`\`\``, inline: false },
-                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sử.', inline: false }
                 );
 
                 // 3. Cập nhật lại tin nhắn đó trên Discord
