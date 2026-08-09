@@ -58,8 +58,8 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Lệnh chỉnh sửa tiền cọc cho Staff (Dành riêng cho Owner): !setdeposit @staff 500k (hoặc -500k để giảm)
-    if (message.content.startsWith('!setdeposit')) {
+    // Lệnh chỉnh sửa tiền cọc cho Staff (Dành riêng cho Owner): !tiencoc @staff 500k (hoặc -500k để giảm)
+    if (message.content.startsWith('!tiencoc')) {
         if (!message.member.roles.cache.has(OWNER_ROLE_ID)) {
             return message.reply('❌ Bạn không có quyền sử dụng lệnh này (Yêu cầu Role Owner).');
         }
@@ -69,7 +69,7 @@ client.on('messageCreate', async message => {
         const amountStr = args[2];
 
         if (!targetUser || !amountStr) {
-            return message.reply('❌ Sai cú pháp! Ví dụ: `!setdeposit @username 500000` hoặc `!setdeposit @username 1tr`');
+            return message.reply('❌ Sai cú pháp! Ví dụ: `!tiencoc @username 500000` hoặc `!tiencoc @username 1tr`');
         }
 
         const staffId = targetUser.id;
