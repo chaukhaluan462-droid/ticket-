@@ -107,9 +107,11 @@ client.on('interactionCreate', async interaction => {
                 .setColor('#00ffcc')
                 .setTimestamp();
 
+            // Đã tích hợp đủ nút Nhận, Hủy Nhận, Chuyển Ticket, Thêm Người, Đóng Ticket
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
+                new ButtonBuilder().setCustomId('transfer_ticket_btn').setLabel('Chuyển Ticket').setStyle(ButtonStyle.Primary).setEmoji('➡️'),
                 new ButtonBuilder().setCustomId('add_user_btn').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
@@ -162,6 +164,7 @@ client.on('interactionCreate', async interaction => {
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
+                new ButtonBuilder().setCustomId('transfer_ticket_btn').setLabel('Chuyển Ticket').setStyle(ButtonStyle.Primary).setEmoji('➡️'),
                 new ButtonBuilder().setCustomId('add_user_btn').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
@@ -228,7 +231,30 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `🔄 **${staff.tag}** đã hủy nhận ticket.`, ephemeral: false });
         }
 
-        // 5. Thêm Người
+        // 5. Chuyển Nhượng Ticket (Mở Menu Chọn Staff)
+        if (interaction.customId === 'transfer_ticket_btn') {
+            const channel = interaction.channel;
+            const staff = interaction.user;
+
+            if (!ticketData[channel.id] || ticketData[channel.id].claimer === 'Chưa có ai nhận') {
+                return interaction.reply({ content: '❌ Ticket này chưa được ai nhận, bạn không thể chuyển nhượng!', ephemeral: true });
+            }
+
+            if (!ticketData[channel.id].claimer.includes(staff.id)) {
+                return interaction.reply({ content: '❌ Chỉ Staff đang tiếp nhận ticket này mới có quyền chuyển nhượng!', ephemeral: true });
+            }
+
+            const selectMenu = new UserSelectMenuBuilder()
+                .setCustomId('select_staff_to_transfer')
+                .setPlaceholder('Chọn Staff muốn bàn giao vé này...')
+                .setMinValues(1)
+                .setMaxValues(1);
+
+            const row = new ActionRowBuilder().addComponents(selectMenu);
+            await interaction.reply({ content: '👇 Hãy chọn đồng nghiệp bạn muốn chuyển giao vé:', components: [row], ephemeral: true });
+        }
+
+        // 6. Thêm Người
         if (interaction.customId === 'add_user_btn') {
             const selectMenu = new UserSelectMenuBuilder()
                 .setCustomId('select_user_to_add')
@@ -240,7 +266,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn thành viên:', components: [row], ephemeral: true });
         }
 
-        // 6. Đóng Ticket
+        // 7. Đóng Ticket
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const closerUser = interaction.user;
@@ -271,7 +297,7 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // 7. Mở Modal Đánh Giá Sao
+        // 8. Mở Modal Đánh Giá Sao
         if (interaction.customId.startsWith('rate_')) {
             const stars = interaction.customId.split('_')[1];
             const modal = new ModalBuilder()
@@ -290,8 +316,9 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý menu chọn user
+    // Xử lý menu chọn user (Thêm người hoặc Chuyển Staff)
     if (interaction.isUserSelectMenu()) {
+        // Xử lý thêm người vào ticket
         if (interaction.customId === 'select_user_to_add') {
             const targetUser = interaction.users.first();
             const channel = interaction.channel;
@@ -308,6 +335,47 @@ client.on('interactionCreate', async interaction => {
             } catch (error) {
                 console.error(error);
                 await interaction.update({ content: '❌ Lỗi khi cấp quyền!', components: [] });
+            }
+        }
+
+        // Xử lý chuyển nhượng vé cho Staff mới
+        if (interaction.customId === 'select_staff_to_transfer') {
+            const targetStaff = interaction.users.first();
+            const channel = interaction.channel;
+            const currentStaff = interaction.user;
+
+            if (targetStaff.id === currentStaff.id) {
+                return interaction.update({ content: '❌ Bạn không thể tự chuyển vé lại cho chính mình!', components: [] });
+            }
+
+            if (ticketData[channel.id]) {
+                ticketData[channel.id].claimer = `${targetStaff.tag} (<@${targetStaff.id}>)`;
+            }
+
+            try {
+                await channel.permissionOverwrites.create(targetStaff.id, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                    ReadMessageHistory: true
+                });
+
+                const messages = await channel.messages.fetch({ limit: 10 });
+                const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
+
+                if (welcomeMessage) {
+                    const oldEmbed = welcomeMessage.embeds[0];
+                    const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(
+                        { name: '📌 Trạng thái', value: `\`\`\`ini\n[ Đã chuyển giao cho ${targetStaff.tag} ]\n\`\`\``, inline: false },
+                        { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sử.', inline: false }
+                    );
+                    await welcomeMessage.edit({ embeds: [updatedEmbed] });
+                }
+
+                await interaction.update({ content: `✅ Đã chuyển nhượng ticket thành công cho **${targetStaff.tag}**!`, components: [] });
+                await channel.send(`🔄 **${currentStaff}** đã chuyển nhượng ticket này cho ${targetStaff}. Nhờ bạn tiếp tục hỗ trợ khách hàng nhé! <@&${GDTG_ROLE_ID}>`);
+            } catch (error) {
+                console.error(error);
+                await interaction.update({ content: '❌ Có lỗi xảy ra khi chuyển nhượng ticket!', components: [] });
             }
         }
     }
