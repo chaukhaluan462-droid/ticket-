@@ -25,13 +25,12 @@ const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
 
 const ticketData = {};
-const completedTickets = {}; // Lưu số lượng ticket hoàn thành theo ID của Staff { staffId: số_lượng }
+const completedTickets = {}; 
 
 client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
 });
 
-// Lệnh setup bảng ticket chứa cả 2 nút
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -402,7 +401,6 @@ client.on('interactionCreate', async interaction => {
 
             let data = ticketData[channel.id];
 
-            // Dự phòng thông minh: Nếu bot bị restart mất bộ nhớ, tự động quét lại tin nhắn ghim hoặc tên kênh
             if (!data) {
                 let openerText = 'Không rõ';
                 let claimerText = 'Chưa có';
@@ -451,18 +449,19 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            // --- XỬ LÝ TĂNG SỐ TICKET VÀ ĐỔI TÊN HIỂN THỊ KÈM PING STAFF ---
+            // --- XỬ LÝ ĐẶT PING VÀO PHẦN GIÁ TRỊ (VALUE) ---
             let totalCompletedText = '0 ticket';
-            let fieldTitleName = 'Số ticket đã hoàn thành của Staff';
+            let staffFieldTitle = 'Số ticket đã hoàn thành của Staff';
             let staffIdMatch = data.claimer.match(/<@!?(\d+)>/);
             
             if (staffIdMatch) {
                 const staffId = staffIdMatch[1];
                 completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
-                totalCompletedText = `${completedTickets[staffId]} ticket`;
                 
-                // Đổi tên trường thành "Số ticket đã hoàn thành của @abcdxyz" (với abcdxyz là ping của Staff)
-                fieldTitleName = `Số ticket đã hoàn thành của <@${staffId}>`;
+                // Tiêu đề dạng chữ chuẩn không bị lỗi hiện thẻ tag thô
+                staffFieldTitle = 'Số ticket đã hoàn thành';
+                // Đưa thẻ ping ra phần giá trị để Discord dịch thành tên Staff màu xanh
+                totalCompletedText = `<@${staffId}> đã hoàn thành **${completedTickets[staffId]}** ticket`;
             }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
@@ -477,10 +476,9 @@ client.on('interactionCreate', async interaction => {
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: false },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: false },
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: false },
-                            { name: fieldTitleName, value: totalCompletedText, inline: false },
-                            { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
-                    
+                            { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
+                            { name: staffFieldTitle, value: totalCompletedText, inline: false },
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
