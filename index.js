@@ -57,9 +57,9 @@ client.on('messageCreate', async message => {
     if (message.content.startsWith('!add')) {
         const channel = message.channel;
 
-        // Kiểm tra xem kênh hiện tại có phải là kênh ticket không (dựa vào tên kênh bắt đầu bằng "ticket-")
+        // Kiểm tra xem kênh hiện tại có phải là kênh ticket không
         if (!channel.name.startsWith('ticket-')) {
-            return message.reply({ content: '❌ Lệnh này chỉ có thể sử dụng bên trong các kênh ticket!', ephemeral: false });
+            return message.reply({ content: '❌ Lệnh này chỉ có thể sử dụng bên trong các kênh ticket!' });
         }
 
         const targetUser = message.mentions.users.first();
@@ -68,7 +68,7 @@ client.on('messageCreate', async message => {
         }
 
         try {
-            // Cấp quyền cho user được nhìn thấy và nhắn tin trong kênh ticket này
+            // Cấp quyền tường minh (Override) cho riêng user đó được phép thấy và chat trong kênh này
             await channel.permissionOverwrites.create(targetUser.id, {
                 ViewChannel: true,
                 SendMessages: true,
@@ -122,7 +122,7 @@ client.on('interactionCreate', async interaction => {
 
             const welcomeEmbed = new EmbedBuilder()
                 .setTitle(`Chào mừng, ${user.username}!`)
-                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Đóng Ticket** khi hoàn tất.\n\n*Mẹo: Bạn có thể gõ `!add @tên_người_khác` để thêm người vào ticket này.*')
+                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Đóng Ticket** khi hoàn tất.\n\n*Mẹo: Bạn có thể gõ `!add @tên_người_khác` để thêm người bất kỳ vào ticket này.*')
                 .setColor('#00ff00');
 
             const actionRow = new ActionRowBuilder().addComponents(
