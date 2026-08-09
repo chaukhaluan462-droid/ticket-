@@ -68,6 +68,39 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [topEmbed] });
     }
 
+    // Lệnh kiểm tra chỉ số của Staff bất kỳ (!stats @staff)
+    if (message.content.startsWith('!stats')) {
+        const targetUser = message.mentions.users.first();
+        if (!targetUser) {
+            return message.reply('❌ Vui lòng tag một Staff cụ thể để xem chỉ số. Ví dụ: `!stats @username`');
+        }
+
+        const staffId = targetUser.id;
+        const totalCompleted = completedTickets[staffId] || 0;
+
+        let avgRatingText = 'Chưa có đánh giá';
+        let totalCount = 0;
+
+        if (staffRatings[staffId] && staffRatings[staffId].count > 0) {
+            totalCount = staffRatings[staffId].count;
+            const avg = (staffRatings[staffId].totalStars / totalCount).toFixed(1);
+            avgRatingText = `${avg}/5 ⭐`;
+        }
+
+        const statsEmbed = new EmbedBuilder()
+            .setTitle(`📊 THỐNG KÊ GDTG - ${targetUser.username}`)
+            .setDescription(`Thông tin hiệu suất làm việc của <@${staffId}>:`)
+            .addFields(
+                { name: '🛡️ Tổng số kèo đã hoàn thành', value: `**${totalCompleted}** kèo`, inline: true },
+                { name: '⭐ Độ uy tín trung bình', value: avgRatingText, inline: true },
+                { name: '📝 Tổng số lượt đánh giá', value: `**${totalCount}** lượt`, inline: false }
+            )
+            .setColor('#00ffcc')
+            .setTimestamp();
+
+        return message.reply({ embeds: [statsEmbed] });
+    }
+
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
             .setTitle('🎫 Kênh Hỗ Trợ & Trung Gian')
