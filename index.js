@@ -392,7 +392,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý submit modal đánh giá (Có tích hợp tự quét lại thông minh & cộng dồn số ticket hoàn thành)
+    // Xử lý submit modal đánh giá
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = interaction.customId.split('_')[2];
@@ -451,15 +451,18 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            // --- XỬ LÝ TĂNG SỐ TICKET HOÀN THÀNH CHO STAFF ---
-            let totalCompletedText = 'Không tính (Chưa có người nhận)';
+            // --- XỬ LÝ TĂNG SỐ TICKET VÀ ĐỔI TÊN HIỂN THỊ KÈM PING STAFF ---
+            let totalCompletedText = '0 ticket';
+            let fieldTitleName = 'Số ticket đã hoàn thành của Staff';
             let staffIdMatch = data.claimer.match(/<@!?(\d+)>/);
             
             if (staffIdMatch) {
                 const staffId = staffIdMatch[1];
-                // Tăng số lượng lên 1
                 completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
                 totalCompletedText = `${completedTickets[staffId]} ticket`;
+                
+                // Đổi tên trường thành "Số ticket đã hoàn thành của @abcdxyz" (với abcdxyz là ping của Staff)
+                fieldTitleName = `Số ticket đã hoàn thành của <@${staffId}>`;
             }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
@@ -474,7 +477,7 @@ client.on('interactionCreate', async interaction => {
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: false },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: false },
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: false },
-                            { name: '📊 Số ticket đã hoàn thành của Staff', value: totalCompletedText, inline: false },
+                            { name: fieldTitleName, value: totalCompletedText, inline: false },
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
                             { name: '📁 Tên kênh', value: channel.name, inline: false }
