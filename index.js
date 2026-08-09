@@ -449,19 +449,17 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            // --- XỬ LÝ ĐẶT PING VÀO PHẦN GIÁ TRỊ (VALUE) ---
-            let totalCompletedText = '0 ticket';
-            let staffFieldTitle = 'Số ticket đã hoàn thành của Staff';
+            // --- XỬ LÝ ĐỊNH DẠNG SỐ KÈO GDTG ---
+            let totalCompletedText = '0 kèo';
+            let staffFieldTitle = 'Số kèo GDTG';
             let staffIdMatch = data.claimer.match(/<@!?(\d+)>/);
             
             if (staffIdMatch) {
                 const staffId = staffIdMatch[1];
                 completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
                 
-                // Tiêu đề dạng chữ chuẩn không bị lỗi hiện thẻ tag thô
-                staffFieldTitle = 'Số ticket đã hoàn thành';
-                // Đưa thẻ ping ra phần giá trị để Discord dịch thành tên Staff màu xanh
-                totalCompletedText = `<@${staffId}> đã hoàn thành **${completedTickets[staffId]}** ticket`;
+                // Định dạng hiển thị: @Tên_Staff đã thành: (số kèo) kèo
+                totalCompletedText = `<@${staffId}> đã thành: **${completedTickets[staffId]}** kèo`;
             }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
@@ -472,13 +470,13 @@ client.on('interactionCreate', async interaction => {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('📊 Nhật Ký Đánh Giá Ticket Chi Tiết')
                         .addFields(
-                            { name: '👤 Người mở ticket', value: data.opener, inline: false },
-                            { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: false },
-                            { name: '🔒 Người đóng ticket', value: data.closer, inline: false },
-                            { name: '✍️ Người đánh giá', value: data.reviewer, inline: false },
-                            { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
+                            { name: '👤 Người mở ticket', value: data.opener, inline: true },
+                            { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: true },
+                            { name: '🔒 Người đóng ticket', value: data.closer, inline: true },
+                            { name: '✍️ Người đánh giá', value: data.reviewer, inline: true },
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
-                            { name: staffFieldTitle, value: totalVouchText, inline: false },
+                            { name: '💬 Lời nhận xét', value: reviewContent, inline: false }
+                            { name: staffFieldTitle, value: totalCompletedText, inline: false },
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
