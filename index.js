@@ -372,7 +372,7 @@ client.on('interactionCreate', async interaction => {
                 }
 
                 await interaction.update({ content: `✅ Đã chuyển nhượng ticket thành công cho **${targetStaff.tag}**!`, components: [] });
-                await channel.send(`🔄 **${currentStaff}** đã chuyển nhượng ticket này cho ${targetStaff}. Nhờ bạn tiếp tục hỗ trợ khách hàng nhé! <@&${GDTG_ROLE_ID}>`);
+                await channel.send(`🔄 **${currentStaff}** đã chuyển nhượng ticket này cho ${targetStaff}. Nhờ bạn tiếp tục hỗ trợ khách hàng nhé!`);
             } catch (error) {
                 console.error(error);
                 await interaction.update({ content: '❌ Có lỗi xảy ra khi chuyển nhượng ticket!', components: [] });
