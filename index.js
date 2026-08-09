@@ -25,6 +25,7 @@ const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
 
 const ticketData = {};
+const completedTickets = {}; // Lưu số lượng ticket hoàn thành theo ID của Staff { staffId: số_lượng }
 
 client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
@@ -391,7 +392,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý submit modal đánh giá (Có tính năng thông minh tự quét lại tin nhắn ghim nếu bị mất bộ nhớ)
+    // Xử lý submit modal đánh giá (Có tích hợp tự quét lại thông minh & cộng dồn số ticket hoàn thành)
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = interaction.customId.split('_')[2];
@@ -401,7 +402,7 @@ client.on('interactionCreate', async interaction => {
 
             let data = ticketData[channel.id];
 
-            // Dự phòng thông minh: Nếu bot bị restart mất bộ nhớ, tự động quét lại tin nhắn ghim trong kênh
+            // Dự phòng thông minh: Nếu bot bị restart mất bộ nhớ, tự động quét lại tin nhắn ghim hoặc tên kênh
             if (!data) {
                 let openerText = 'Không rõ';
                 let claimerText = 'Chưa có';
@@ -412,7 +413,10 @@ client.on('interactionCreate', async interaction => {
                         const match = pinnedMsg.content.match(/<@!?(\d+)>/);
                         if (match) {
                             openerText = `<@${match[1]}>`;
+                        } else if (pinnedMsg.author) {
+                            openerText = `${pinnedMsg.author.tag} (<@${pinnedMsg.author.id}>)`;
                         }
+
                         const embed = pinnedMsg.embeds[0];
                         if (embed && embed.fields) {
                             const statusField = embed.fields.find(f => f.name === '📌 Trạng thái');
@@ -425,17 +429,37 @@ client.on('interactionCreate', async interaction => {
                     console.error('Không thể quét tin nhắn ghim:', e);
                 }
 
+                if (openerText === 'Không rõ') {
+                    const usernamePart = channel.name.replace('ticket-', '').replace('support-', '');
+                    openerText = usernamePart;
+                }
+
                 data = {
                     opener: openerText,
                     claimer: claimerText,
-                    closer: `${reviewerUser.tag} (Hoặc Staff đóng)`,
+                    closer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`,
                     reviewer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`
                 };
             } else {
+                if (!data.opener || data.opener === 'Không rõ') {
+                    const usernamePart = channel.name.replace('ticket-', '').replace('support-', '');
+                    data.opener = usernamePart;
+                }
                 data.reviewer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`;
                 if (!data.closer || data.closer === 'Chưa xác định') {
                     data.closer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`;
                 }
+            }
+
+            // --- XỬ LÝ TĂNG SỐ TICKET HOÀN THÀNH CHO STAFF ---
+            let totalCompletedText = 'Không tính (Chưa có người nhận)';
+            let staffIdMatch = data.claimer.match(/<@!?(\d+)>/);
+            
+            if (staffIdMatch) {
+                const staffId = staffIdMatch[1];
+                // Tăng số lượng lên 1
+                completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
+                totalCompletedText = `${completedTickets[staffId]} ticket`;
             }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
@@ -450,6 +474,7 @@ client.on('interactionCreate', async interaction => {
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: false },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: false },
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: false },
+                            { name: '📊 Số ticket đã hoàn thành của Staff', value: totalCompletedText, inline: false },
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
                             { name: '📁 Tên kênh', value: channel.name, inline: false }
