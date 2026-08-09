@@ -23,16 +23,17 @@ const client = new Client({
 
 const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
+const OWNER_ROLE_ID = '1524373809447047279'; // Thay ID Role Owner của server bạn vào đây
 
 const ticketData = {};
 const completedTickets = {}; 
-const staffRatings = {}; // Lưu trữ lịch sử đánh giá sao: { staffId: { totalStars: 0, count: 0 } }
+const staffRatings = {}; 
 const staffTotalDeposits = {}; // Lưu trữ tổng số tiền cọc Staff đã xử lý: { staffId: số_tiền_numeric }
 
-// Hàm chuyển đổi chuỗi tiền cọc (VD: "500k", "1tr", "2,000,000") thành số để cộng dồn
+// Hàm chuyển đổi chuỗi tiền cọc (VD: "500k", "1tr", "2,000,000") thành số
 function parseDeposit(str) {
     if (!str || str === 'Chưa cập nhật' || str === 'Không áp dụng') return 0;
-    let clean = str.toLowerCase().replace(/[,.\sđvn]/g, '');
+    let clean = String(str).toLowerCase().replace(/[,.\sđvn]/g, '');
     let multiplier = 1;
     if (clean.includes('k')) {
         multiplier = 1000;
@@ -56,6 +57,33 @@ client.once('ready', () => {
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
+
+    // Lệnh chỉnh sửa tiền cọc cho Staff (Dành riêng cho Owner): !setdeposit @staff 500k (hoặc -500k để giảm)
+    if (message.content.startsWith('!setdeposit')) {
+        if (!message.member.roles.cache.has(OWNER_ROLE_ID)) {
+            return message.reply('❌ Bạn không có quyền sử dụng lệnh này (Yêu cầu Role Owner).');
+        }
+
+        const args = message.content.split(' ');
+        const targetUser = message.mentions.users.first();
+        const amountStr = args[2];
+
+        if (!targetUser || !amountStr) {
+            return message.reply('❌ Sai cú pháp! Ví dụ: `!setdeposit @username 500000` hoặc `!setdeposit @username 1tr`');
+        }
+
+        const staffId = targetUser.id;
+        const depositChange = parseDeposit(amountStr);
+
+        if (!staffTotalDeposits[staffId]) {
+            staffTotalDeposits[staffId] = 0;
+        }
+
+        // Nếu bạn muốn set thẳng số tiền thay vì cộng dồn, hãy đổi thành: staffTotalDeposits[staffId] = parseDeposit(amountStr);
+        staffTotalDeposits[staffId] += depositChange;
+
+        return message.reply(`✅ Đã cập nhật thành công tổng tiền cọc cho <@${staffId}>. Tổng hiện tại: **${formatVND(staffTotalDeposits[staffId])}**`);
+    }
 
     // Lệnh xem bảng xếp hạng Top Staff
     if (message.content === '!topstaff') {
@@ -155,7 +183,7 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         
-        // 1. Tạo Ticket Giao Dịch
+        // 1. Tạo Ticket Giao Dịch (Đã gỡ nút Nhập Tiền Cọc)
         if (interaction.customId === 'create_ticket') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -193,16 +221,15 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`Chào mừng <@${user.id}> đã tạo ticket hệ thống! Vui lòng cung cấp chi tiết vấn đề hoặc thông tin giao dịch của bạn tại đây.`)
                 .addFields(
                     { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
-                    { name: '💰 Số tiền cọc', value: '`Chưa cập nhật`', inline: true },
                     { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
                 )
                 .setColor('#00ffcc')
                 .setTimestamp();
 
+            // Gói gọn các nút thao tác (Đã loại bỏ nút Nhập Tiền Cọc)
             const actionRow1 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
-                new ButtonBuilder().setCustomId('set_deposit_btn').setLabel('Nhập Tiền Cọc').setStyle(ButtonStyle.Primary).setEmoji('💰'),
                 new ButtonBuilder().setCustomId('transfer_ticket_btn').setLabel('Chuyển Ticket').setStyle(ButtonStyle.Secondary).setEmoji('➡️')
             );
 
@@ -347,23 +374,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `🔄 **${staff.tag}** đã hủy nhận ticket.`, ephemeral: false });
         }
 
-        // 5. Mở Modal Nhập Tiền Cọc
-        if (interaction.customId === 'set_deposit_btn') {
-            const modal = new ModalBuilder()
-                .setCustomId('modal_set_deposit')
-                .setTitle('Cập Nhật Số Tiền Cọc Giao Dịch');
-
-            const depositInput = new TextInputBuilder()
-                .setCustomId('deposit_amount')
-                .setLabel('Nhập số tiền cọc (Ví dụ: 500k, 1tr, 1000000):')
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder('VD: 500k')
-                .setRequired(true);
-
-            modal.addComponents(new ActionRowBuilder().addComponents(depositInput));
-            await interaction.showModal(modal);
-        }
-
         // 6. Chuyển Nhượng Ticket
         if (interaction.customId === 'transfer_ticket_btn') {
             const channel = interaction.channel;
@@ -450,36 +460,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý Submit Modal
-    if (interaction.isModalSubmit()) {
-        if (interaction.customId === 'modal_set_deposit') {
-            const depositAmount = interaction.fields.getTextInputValue('deposit_amount');
-            const channel = interaction.channel;
-
-            if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', deposit: 'Chưa cập nhật' };
-            }
-            ticketData[channel.id].deposit = depositAmount;
-
-            const messages = await channel.messages.fetch({ limit: 10 });
-            const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
-
-            if (welcomeMessage) {
-                const oldEmbed = welcomeMessage.embeds[0];
-                const fields = oldEmbed.fields.map(f => {
-                    if (f.name === '💰 Số tiền cọc') {
-                        return { name: '💰 Số tiền cọc', value: `**${depositAmount}**`, inline: true };
-                    }
-                    return f;
-                });
-                const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(fields);
-                await welcomeMessage.edit({ embeds: [updatedEmbed] });
-            }
-
-            return interaction.reply({ content: `✅ Đã cập nhật số tiền cọc thành công: **${depositAmount}**`, ephemeral: false });
-        }
-    }
-
     // Xử lý menu chọn user
     if (interaction.isUserSelectMenu()) {
         if (interaction.customId === 'select_user_to_add') {
@@ -546,7 +526,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý submit modal đánh giá và cộng dồn dữ liệu khi đóng ticket
+    // Xử lý submit modal đánh giá
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = Number(interaction.customId.split('_')[2]);
@@ -606,11 +586,9 @@ client.on('interactionCreate', async interaction => {
             if (staffIdMatch) {
                 const staffId = staffIdMatch[1];
                 
-                // 1. Tăng số kèo hoàn thành
                 completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
                 totalCompletedText = `<@${staffId}> đã hoàn thành: **${completedTickets[staffId]}** kèo`;
 
-                // 2. Lưu trữ điểm sao
                 if (!staffRatings[staffId]) {
                     staffRatings[staffId] = { totalStars: 0, count: 0 };
                 }
@@ -619,13 +597,6 @@ client.on('interactionCreate', async interaction => {
 
                 const avg = (staffRatings[staffId].totalStars / staffRatings[staffId].count).toFixed(1);
                 avgRatingDisplay = `${avg}/5 ⭐ (Tổng ${staffRatings[staffId].count} đánh giá)`;
-
-                // 3. Cộng dồn số tiền cọc của kèo này vào tổng cọc của Staff
-                const depositNum = parseDeposit(data.deposit);
-                if (depositNum > 0) {
-                    if (!staffTotalDeposits[staffId]) staffTotalDeposits[staffId] = 0;
-                    staffTotalDeposits[staffId] += depositNum;
-                }
             }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
