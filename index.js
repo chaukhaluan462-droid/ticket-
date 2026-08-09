@@ -98,10 +98,17 @@ client.on('interactionCreate', async interaction => {
                 closer: 'Chưa xác định'
             };
 
+            // 🌟 EMBED CHÀO MỪNG MỚI HOÀNH TRÁNG & ĐẦY ĐỦ THÔNG TIN
             const welcomeEmbed = new EmbedBuilder()
-                .setTitle(`Chào mừng, ${user.username}!`)
-                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Thêm Người** để kéo thành viên khác vào.')
-                .setColor('#00ff00');
+                .setTitle('🎫 KÊNH HỖ TRỢ & GIAO DỊCH RIÊNG TƯ')
+                .setDescription(`Chào mừng <@${user.id}> đã tạo ticket hệ thống! Vui lòng cung cấp chi tiết vấn đề hoặc thông tin giao dịch của bạn tại đây để đội ngũ hỗ trợ nắm bắt nhanh nhất.`)
+                .addFields(
+                    { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
+                )
+                .setColor('#00ffcc')
+                .setTimestamp()
+                .setFooter({ text: 'Hệ thống Quản lý Ticket Tự Động', iconURL: interaction.guild.iconURL() });
 
             // Giữ nguyên 3 nút: Nhận Ticket, Thêm Người, Đóng Ticket
             const actionRow = new ActionRowBuilder().addComponents(
