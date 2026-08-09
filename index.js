@@ -30,10 +30,11 @@ client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
 });
 
-// Lệnh tạo bảng ticket
+// Lệnh tạo bảng ticket & Lệnh thêm người vào ticket (!add)
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
+    // Lệnh setup bảng tạo ticket
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
             .setTitle('🎫 Hệ Thống Hỗ Trợ (Ticket)')
@@ -50,6 +51,35 @@ client.on('messageCreate', async message => {
 
         await message.channel.send({ embeds: [embed], components: [row] });
         await message.delete();
+    }
+
+    // Lệnh thêm người vào ticket: gõ !add @user
+    if (message.content.startsWith('!add')) {
+        const channel = message.channel;
+
+        // Kiểm tra xem kênh hiện tại có phải là kênh ticket không (dựa vào tên kênh bắt đầu bằng "ticket-")
+        if (!channel.name.startsWith('ticket-')) {
+            return message.reply({ content: '❌ Lệnh này chỉ có thể sử dụng bên trong các kênh ticket!', ephemeral: false });
+        }
+
+        const targetUser = message.mentions.users.first();
+        if (!targetUser) {
+            return message.reply({ content: '❌ Vui lòng tag người bạn muốn thêm vào. Ví dụ: `!add @TênNgườiĐó`' });
+        }
+
+        try {
+            // Cấp quyền cho user được nhìn thấy và nhắn tin trong kênh ticket này
+            await channel.permissionOverwrites.create(targetUser.id, {
+                ViewChannel: true,
+                SendMessages: true,
+                ReadMessageHistory: true
+            });
+
+            await message.channel.send(`✅ Đã thêm thành công ${targetUser} vào ticket này bởi ${message.author}!`);
+        } catch (error) {
+            console.error(error);
+            await message.reply({ content: '❌ Có lỗi xảy ra khi thêm người vào ticket!' });
+        }
     }
 });
 
@@ -92,7 +122,7 @@ client.on('interactionCreate', async interaction => {
 
             const welcomeEmbed = new EmbedBuilder()
                 .setTitle(`Chào mừng, ${user.username}!`)
-                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Đóng Ticket** khi hoàn tất.')
+                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Đóng Ticket** khi hoàn tất.\n\n*Mẹo: Bạn có thể gõ `!add @tên_người_khác` để thêm người vào ticket này.*')
                 .setColor('#00ff00');
 
             const actionRow = new ActionRowBuilder().addComponents(
