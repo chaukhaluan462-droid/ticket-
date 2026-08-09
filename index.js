@@ -139,6 +139,23 @@ client.on('interactionCreate', async interaction => {
                 ticketData[channel.id].claimer = `${staff.tag} (<@${staff.id}>)`;
             }
 
+            // 1. Tìm lại tin nhắn chào mừng ban đầu (tin nhắn chứa Embed và các nút bấm)
+            const messages = await channel.messages.fetch({ limit: 10 });
+            const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
+
+            if (welcomeMessage) {
+                const oldEmbed = welcomeMessage.embeds[0];
+
+                // 2. Tạo Embed mới với trạng thái đã được cập nhật tên Staff
+                const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(
+                    { name: '📌 Trạng thái', value: `\`\`\`ini\n[ Đã được tiếp nhận bởi ${staff.tag} ]\n\`\`\``, inline: false },
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
+                );
+
+                // 3. Cập nhật lại tin nhắn đó trên Discord
+                await welcomeMessage.edit({ embeds: [updatedEmbed] });
+            }
+
             await interaction.reply({ content: `✅ **${staff.tag}** đã nhận xử lý ticket này!`, ephemeral: false });
         }
 
