@@ -478,7 +478,7 @@ client.on('interactionCreate', async interaction => {
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: false },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
-                            { name: staffFieldTitle, value: totalCompletedText, inline: false },
+                            { name: staffFieldTitle, value: totalVouchText, inline: false },
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
