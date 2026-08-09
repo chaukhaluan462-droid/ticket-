@@ -116,7 +116,6 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Gửi tin nhắn có ping role GDTG và tự động ghim (Pin) panel lên đầu kênh[cite: 4]
             const sentMessage = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [welcomeEmbed], components: [actionRow] });
             await sentMessage.pin();
 
@@ -173,7 +172,6 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Gửi tin nhắn hỗ trợ có ping role GDTG và tự động ghim (Pin) panel lên đầu kênh[cite: 4]
             const sentMessageSupport = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [supportEmbed], components: [actionRow] });
             await sentMessageSupport.pin();
 
@@ -189,13 +187,15 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '❌ Bạn không thể tự nhận ticket do chính mình tạo ra!', ephemeral: true });
             }
 
-            if (ticketData[channel.id] && ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
+            if (!ticketData[channel.id]) {
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá' };
+            }
+
+            if (ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
                 return interaction.reply({ content: `❌ Ticket này đã được tiếp nhận bởi **${ticketData[channel.id].claimer}**!`, ephemeral: true });
             }
 
-            if (ticketData[channel.id]) {
-                ticketData[channel.id].claimer = `${staff.tag} (<@${staff.id}>)`;
-            }
+            ticketData[channel.id].claimer = `${staff.tag} (<@${staff.id}>)`;
 
             const messages = await channel.messages.fetch({ limit: 10 });
             const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
@@ -217,7 +217,11 @@ client.on('interactionCreate', async interaction => {
             const channel = interaction.channel;
             const staff = interaction.user;
 
-            if (!ticketData[channel.id] || ticketData[channel.id].claimer === 'Chưa có ai nhận') {
+            if (!ticketData[channel.id]) {
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá' };
+            }
+
+            if (ticketData[channel.id].claimer === 'Chưa có ai nhận') {
                 return interaction.reply({ content: '❌ Ticket chưa có ai nhận để hủy!', ephemeral: true });
             }
 
@@ -238,7 +242,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `🔄 **${staff.tag}** đã hủy nhận ticket.`, ephemeral: false });
         }
 
-        // 5. Chuyển Nhượng Ticket (Mở Menu Chọn Staff)
+        // 5. Chuyển Nhượng Ticket
         if (interaction.customId === 'transfer_ticket_btn') {
             const channel = interaction.channel;
             const staff = interaction.user;
@@ -282,9 +286,10 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '❌ Người tạo ticket không thể tự đóng ticket!', ephemeral: true });
             }
 
-            if (ticketData[channel.id]) {
-                ticketData[channel.id].closer = `${closerUser.tag} (<@${closerUser.id}>)`;
+            if (!ticketData[channel.id]) {
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá' };
             }
+            ticketData[channel.id].closer = `${closerUser.tag} (<@${closerUser.id}>)`;
 
             await interaction.reply({ content: '🔒 Đang chuẩn bị bảng đánh giá...', ephemeral: true });
 
@@ -323,9 +328,8 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý menu chọn user (Thêm người hoặc Chuyển Staff)
+    // Xử lý menu chọn user
     if (interaction.isUserSelectMenu()) {
-        // Xử lý thêm người vào ticket
         if (interaction.customId === 'select_user_to_add') {
             const targetUser = interaction.users.first();
             const channel = interaction.channel;
@@ -345,7 +349,6 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // Xử lý chuyển nhượng vé cho Staff mới
         if (interaction.customId === 'select_staff_to_transfer') {
             const targetStaff = interaction.users.first();
             const channel = interaction.channel;
@@ -355,9 +358,10 @@ client.on('interactionCreate', async interaction => {
                 return interaction.update({ content: '❌ Bạn không thể tự chuyển vé lại cho chính mình!', components: [] });
             }
 
-            if (ticketData[channel.id]) {
-                ticketData[channel.id].claimer = `${targetStaff.tag} (<@${targetStaff.id}>)`;
+            if (!ticketData[channel.id]) {
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá' };
             }
+            ticketData[channel.id].claimer = `${targetStaff.tag} (<@${targetStaff.id}>)`;
 
             try {
                 await channel.permissionOverwrites.create(targetStaff.id, {
@@ -387,16 +391,52 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý submit modal đánh giá
+    // Xử lý submit modal đánh giá (Có tính năng thông minh tự quét lại tin nhắn ghim nếu bị mất bộ nhớ)
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = interaction.customId.split('_')[2];
             const reviewContent = interaction.fields.getTextInputValue('review_text');
             const channel = interaction.channel;
-            const reviewerUser = interaction.user; // Lấy thông tin người bấm đánh giá[cite: 4]
-            
-            const data = ticketData[channel.id] || { opener: 'Không rõ', claimer: 'Chưa có', closer: 'Không rõ', reviewer: 'Chưa đánh giá' };
-            data.reviewer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`; // Lưu lại người đánh giá[cite: 4]
+            const reviewerUser = interaction.user;
+
+            let data = ticketData[channel.id];
+
+            // Dự phòng thông minh: Nếu bot bị restart mất bộ nhớ, tự động quét lại tin nhắn ghim trong kênh
+            if (!data) {
+                let openerText = 'Không rõ';
+                let claimerText = 'Chưa có';
+                try {
+                    const fetchedMessages = await channel.messages.fetch({ limit: 10 });
+                    const pinnedMsg = fetchedMessages.find(m => m.pinned);
+                    if (pinnedMsg) {
+                        const match = pinnedMsg.content.match(/<@!?(\d+)>/);
+                        if (match) {
+                            openerText = `<@${match[1]}>`;
+                        }
+                        const embed = pinnedMsg.embeds[0];
+                        if (embed && embed.fields) {
+                            const statusField = embed.fields.find(f => f.name === '📌 Trạng thái');
+                            if (statusField && statusField.value.includes('tiếp nhận')) {
+                                claimerText = statusField.value.replace(/```ini|\[|\]/g, '').trim();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Không thể quét tin nhắn ghim:', e);
+                }
+
+                data = {
+                    opener: openerText,
+                    claimer: claimerText,
+                    closer: `${reviewerUser.tag} (Hoặc Staff đóng)`,
+                    reviewer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`
+                };
+            } else {
+                data.reviewer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`;
+                if (!data.closer || data.closer === 'Chưa xác định') {
+                    data.closer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`;
+                }
+            }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
 
@@ -409,7 +449,7 @@ client.on('interactionCreate', async interaction => {
                             { name: '👤 Người mở ticket', value: data.opener, inline: false },
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: false },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: false },
-                            { name: '✍️ Người đánh giá', value: data.reviewer, inline: false }, // Hiển thị người đánh giá trong log[cite: 4]
+                            { name: '✍️ Người đánh giá', value: data.reviewer, inline: false },
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
                             { name: '📁 Tên kênh', value: channel.name, inline: false }
