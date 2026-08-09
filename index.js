@@ -480,7 +480,7 @@ client.on('interactionCreate', async interaction => {
                             { name: fieldTitleName, value: totalCompletedText, inline: false },
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
-                            { name: '📁 Tên kênh', value: channel.name, inline: false }
+                    
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
