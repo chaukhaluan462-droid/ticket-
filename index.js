@@ -223,4 +223,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 // Điền Token Bot của bạn vào đây 👇
-client.login('TOKEN_THẬT_CỦA_BẠN');
+client.login(process.env.DISCORD_TOKEN);
