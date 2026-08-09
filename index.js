@@ -116,7 +116,7 @@ client.on('interactionCreate', async interaction => {
             );
 
             // Gửi tin nhắn và tự động ghim (Pin) panel lên đầu kênh
-            const sentMessage = await channel.send({ content: `<@${user.id}>`, embeds: [welcomeEmbed], components: [actionRow] });
+            const sentMessage = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [welcomeEmbed], components: [actionRow] });
             await sentMessage.pin();
 
             await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
@@ -172,7 +172,7 @@ client.on('interactionCreate', async interaction => {
             );
 
             // Gửi tin nhắn hỗ trợ và tự động ghim (Pin) panel lên đầu kênh
-            const sentMessageSupport = await channel.send({ content: `<@${user.id}>`, embeds: [supportEmbed], components: [actionRow] });
+            const sentMessageSupport = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [supportEmbed], components: [actionRow] });
             await sentMessageSupport.pin();
 
             await interaction.editReply({ content: `✅ Kênh hỗ trợ của bạn đã được tạo tại: ${channel}` });
