@@ -62,24 +62,26 @@ client.on('interactionCreate', async interaction => {
             const guild = interaction.guild;
             const user = interaction.user;
 
-            const channel = await guild.channels.create({
+          const channel = await guild.channels.create({
                 name: `ticket-${user.username}`,
                 type: ChannelType.GuildText,
+                parent: '1527855907109736528', // 👈 Điền ID danh mục vào đây
+                position: 99, // Đặt số lớn để nó tự động đẩy xuống dưới cùng của danh mục
                 permissionOverwrites: [
                     {
-                        id: guild.id, // Chặn mọi người không liên quan
+                        id: guild.id,
                         deny: [PermissionsBitField.Flags.ViewChannel],
                     },
                     {
-                        id: user.id, // Người tạo ticket được xem
+                        id: user.id,
                         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
                     },
                     {
-                        id: GDTG_ROLE_ID, // Cấp quyền cho role gdtg được xem kênh ticket này
+                        id: GDTG_ROLE_ID,
                         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
                     },
                     {
-                        id: client.user.id, // Bot được phép quản lý
+                        id: client.user.id,
                         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
                     },
                 ],
