@@ -21,7 +21,7 @@ const client = new Client({
     ]
 });
 
-// 1. Cập nhật ID kênh log và ID role gdtg CỦA SERVER MỚI vào đây
+// Cập nhật ID kênh log và ID role gdtg CỦA SERVER MỚI vào đây[cite: 1]
 const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
 
@@ -31,27 +31,32 @@ client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
 });
 
-// Lệnh tạo bảng ticket
+// Lệnh tạo bảng ticket (Bao gồm cả nút Tạo Ticket và Hỗ Trợ)
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
-    .setTitle('🎫 Kênh Hỗ Trợ & Trung Gian')
-    .setDescription(`>>> 🛡️ **HỆ THỐNG TICKET TRUNG GIAN & HỖ TRỢ** 🛡️
+            .setTitle('🎫 Kênh Hỗ Trợ & Trung Gian')
+            .setDescription(`>>> 🛡️ **HỆ THỐNG TICKET TRUNG GIAN & HỖ TRỢ** 🛡️
 
 • 📌 **Mục đích:** Hỗ trợ giao dịch an toàn, giải đáp thắc mắc và xử lý khiếu nại.
-• 📩 **Cách sử dụng:** Nhấn nút **Tạo Ticket** bên dưới để mở kênh chat riêng tư 1-1 với đội ngũ quản trị viên.
+• 📩 **Cách sử dụng:** Nhấn nút **Tạo Ticket** để giao dịch hoặc nút **Hỗ Trợ** nếu bạn cần giải đáp thắc mắc chung.
 
 ✨ *Cam kết uy tín - Bảo mật tuyệt đối - Phản hồi nhanh chóng!*`)
-    .setColor('#0099ff');
+            .setColor('#0099ff');
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('create_ticket')
                 .setLabel('Tạo Ticket')
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji('📩')
+                .setEmoji('📩'),
+            new ButtonBuilder()
+                .setCustomId('support_ticket')
+                .setLabel('Hỗ Trợ')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🎧')
         );
 
         await message.channel.send({ embeds: [embed], components: [row] });
@@ -62,16 +67,27 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     // 1. Xử lý khi bấm nút (Button)
     if (interaction.isButton()) {
-        // Tạo Ticket
+        
+        // ----------------------------------------------------------------
+        // XỬ LÝ TẠO TICKET GIAO DỊCH
+        // ----------------------------------------------------------------
         if (interaction.customId === 'create_ticket') {
             const guild = interaction.guild;
             const user = interaction.user;
 
-          const channel = await guild.channels.create({
+            await interaction.deferReply({ ephemeral: true });
+
+            // Kiểm tra chống tạo lặp nếu người dùng đã có ticket mở
+            const existingChannel = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
+            if (existingChannel) {
+                return interaction.editReply({ content: `❌ Bạn đã có một ticket đang mở tại ${existingChannel} rồi!` });
+            }
+
+            const channel = await guild.channels.create({
                 name: `ticket-${user.username}`,
                 type: ChannelType.GuildText,
-                parent: '1527855907109736528', // 👈 Điền ID danh mục vào đây
-                position: 99, // Đặt số lớn để nó tự động đẩy xuống dưới cùng của danh mục
+                parent: '1527855907109736528', // ID danh mục của bạn[cite: 1]
+                position: 99, 
                 permissionOverwrites: [
                     {
                         id: guild.id,
@@ -98,7 +114,6 @@ client.on('interactionCreate', async interaction => {
                 closer: 'Chưa xác định'
             };
 
-            // 🌟 EMBED CHÀO MỪNG MỚI HOÀNH TRÁNG & ĐẦY ĐỦ THÔNG TIN
             const welcomeEmbed = new EmbedBuilder()
                 .setTitle('🎫 KÊNH HỖ TRỢ & GIAO DỊCH RIÊNG TƯ')
                 .setDescription(`Chào mừng <@${user.id}> đã tạo ticket hệ thống! Vui lòng cung cấp chi tiết vấn đề hoặc thông tin giao dịch của bạn tại đây để đội ngũ hỗ trợ nắm bắt nhanh nhất.`)
@@ -110,7 +125,6 @@ client.on('interactionCreate', async interaction => {
                 .setTimestamp()
                 .setFooter({ text: 'Hệ thống Quản lý Ticket Tự Động', iconURL: interaction.guild.iconURL() });
 
-            // Đã thêm đầy đủ 4 nút: Nhận Ticket, Hủy Nhận, Thêm Người, Đóng Ticket
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
@@ -124,22 +138,95 @@ client.on('interactionCreate', async interaction => {
                 components: [actionRow] 
             });
 
-            await interaction.reply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}`, ephemeral: true });
+            await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
         }
 
-        // Nhận Ticket (Claim)
+        // ----------------------------------------------------------------
+        // XỬ LÝ TẠO TICKET HỖ TRỢ (SUPPORT)
+        // ----------------------------------------------------------------
+        if (interaction.customId === 'support_ticket') {
+            const guild = interaction.guild;
+            const user = interaction.user;
+
+            await interaction.deferReply({ ephemeral: true });
+
+            const existingSupportChannel = guild.channels.cache.find(c => c.name === `support-${user.username.toLowerCase()}`);
+            if (existingSupportChannel) {
+                return interaction.editReply({ content: `❌ Bạn đã có một kênh hỗ trợ đang mở tại ${existingSupportChannel} rồi!` });
+            }
+
+            const channel = await guild.channels.create({
+                name: `support-${user.username}`,
+                type: ChannelType.GuildText,
+                parent: '1527855907109736528', // ID danh mục của bạn[cite: 1]
+                position: 99,
+                permissionOverwrites: [
+                    {
+                        id: guild.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel],
+                    },
+                    {
+                        id: user.id,
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                    {
+                        id: GDTG_ROLE_ID,
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                    {
+                        id: client.user.id,
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                ],
+            });
+
+            ticketData[channel.id] = {
+                opener: `${user.tag} (<@${user.id}>)`,
+                claimer: 'Chưa có ai nhận',
+                closer: 'Chưa xác định'
+            };
+
+            const supportEmbed = new EmbedBuilder()
+                .setTitle('🎧 KÊNH HỖ TRỢ & GIẢI ĐÁP THẮC MẮC')
+                .setDescription(`Chào mừng <@${user.id}> đã kết nối với bộ phận hỗ trợ. Vui lòng nêu rõ câu hỏi hoặc vấn đề bạn đang gặp phải nhé!`)
+                .addFields(
+                    { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
+                )
+                .setColor('#ffaa00')
+                .setTimestamp()
+                .setFooter({ text: 'Hệ thống Quản lý Ticket Tự Động', iconURL: interaction.guild.iconURL() });
+
+            const actionRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
+                new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
+                new ButtonBuilder().setCustomId('add_user_btn').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
+                new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
+            );
+
+            await channel.send({ 
+                content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, 
+                embeds: [supportEmbed], 
+                components: [actionRow] 
+            });
+
+            await interaction.editReply({ content: `✅ Kênh hỗ trợ của bạn đã được tạo tại: ${channel}` });
+        }
+
+        // ----------------------------------------------------------------
+        // NHẬN TICKET (CLAIM)
+        // ----------------------------------------------------------------
         if (interaction.customId === 'claim_ticket') {
             const channel = interaction.channel;
             const staff = interaction.user;
 
-            if (channel.name === `ticket-${staff.username.toLowerCase()}`) {
+            if (channel.name.includes(staff.username.toLowerCase())) {
                 return interaction.reply({ content: '❌ Bạn không thể tự nhận ticket do chính mình tạo ra!', ephemeral: true });
             }
 
-            // 🛑 KIỂM TRA XEM TICKET ĐÃ CÓ AI NHẬN CHƯA
             if (ticketData[channel.id] && ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
                 return interaction.reply({ 
-                    content: `❌ Ticket này đã được tiếp nhận trước đó bởi **${ticketData[channel.id].claimer}** rồi! Bạn không thể nhận đè nữa.`, 
+                    content: `❌ Ticket này đã được tiếp nhận trước đó bởi **${ticketData[channel.id].claimer}** rồi!`, 
                     ephemeral: true 
                 });
             }
@@ -148,40 +235,34 @@ client.on('interactionCreate', async interaction => {
                 ticketData[channel.id].claimer = `${staff.tag} (<@${staff.id}>)`;
             }
 
-            // 1. Tìm lại tin nhắn chào mừng ban đầu (tin nhắn chứa Embed và các nút bấm)
             const messages = await channel.messages.fetch({ limit: 10 });
             const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
 
             if (welcomeMessage) {
                 const oldEmbed = welcomeMessage.embeds[0];
-
-                // 2. Tạo Embed mới với trạng thái đã được cập nhật tên Staff đầu tiên nhận
                 const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(
                     { name: '📌 Trạng thái', value: `\`\`\`ini\n[ Đã được tiếp nhận bởi ${staff.tag} ]\n\`\`\``, inline: false },
                     { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sử.', inline: false }
                 );
-
-                // 3. Cập nhật lại tin nhắn đó trên Discord
                 await welcomeMessage.edit({ embeds: [updatedEmbed] });
             }
 
             await interaction.reply({ content: `✅ **${staff.tag}** đã nhận xử lý ticket này!`, ephemeral: false });
         }
 
-        // Hủy Nhận Ticket (Unclaim) để đổi người khác
+        // ----------------------------------------------------------------
+        // HỦY NHẬN TICKET (UNCLAIM)
+        // ----------------------------------------------------------------
         if (interaction.customId === 'unclaim_ticket') {
             const channel = interaction.channel;
             const staff = interaction.user;
 
-            // Kiểm tra xem ticket này có đang được nhận bởi ai không
             if (!ticketData[channel.id] || ticketData[channel.id].claimer === 'Chưa có ai nhận') {
                 return interaction.reply({ content: '❌ Ticket này hiện tại chưa có ai nhận để mà hủy!', ephemeral: true });
             }
 
-            // Đặt lại dữ liệu về chưa có ai nhận
             ticketData[channel.id].claimer = 'Chưa có ai nhận';
 
-            // Tìm lại tin nhắn chào mừng để update lại bảng Embed thành "Đang chờ..."
             const messages = await channel.messages.fetch({ limit: 10 });
             const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
 
@@ -197,7 +278,9 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `🔄 **${staff.tag}** đã hủy nhận ticket. Trạng thái đã được đưa về chờ tiếp nhận!`, ephemeral: false });
         }
 
-        // Khi bấm nút "Thêm Người" -> Hiện menu chọn thành viên (Chỉ người bấm mới thấy)
+        // ----------------------------------------------------------------
+        // THÊM NGƯỜI VÀO TICKET
+        // ----------------------------------------------------------------
         if (interaction.customId === 'add_user_btn') {
             const selectMenu = new UserSelectMenuBuilder()
                 .setCustomId('select_user_to_add')
@@ -214,12 +297,14 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-        // Đóng Ticket -> Gửi bảng đánh giá sao
+        // ----------------------------------------------------------------
+        // ĐÓNG TICKET (GỬI BẢNG ĐÁNH GIÁ SAO)
+        // ----------------------------------------------------------------
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const closerUser = interaction.user;
 
-            if (channel.name === `ticket-${closerUser.username.toLowerCase()}`) {
+            if (channel.name.includes(closerUser.username.toLowerCase())) {
                 return interaction.reply({ content: '❌ Người tạo ticket không thể tự đóng ticket này. Vui lòng chờ Staff xử lý!', ephemeral: true });
             }
 
@@ -245,7 +330,9 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // Khi bấm vào các nút chọn sao -> Hiện bảng Modal viết lời đánh giá
+        // ----------------------------------------------------------------
+        // MỞ MODAL ĐÁNH GIÁ KHI BẤM SỐ SAO
+        // ----------------------------------------------------------------
         if (interaction.customId.startsWith('rate_')) {
             const stars = interaction.customId.split('_')[1];
 
@@ -267,14 +354,13 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 2. Xử lý khi người dùng chọn thành viên từ Menu (User Select Menu)
+    // 2. Xử lý chọn thành viên từ Menu
     if (interaction.isUserSelectMenu()) {
         if (interaction.customId === 'select_user_to_add') {
             const targetUser = interaction.users.first();
             const channel = interaction.channel;
 
             try {
-                // Cấp quyền xem và nhắn tin trong kênh ticket cho thành viên được chọn
                 await channel.permissionOverwrites.create(targetUser.id, {
                     ViewChannel: true,
                     SendMessages: true,
@@ -297,7 +383,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 3. Xử lý khi người dùng gửi thông tin từ bảng Modal đánh giá sao
+    // 3. Xử lý khi gửi đánh giá hoàn tất từ Modal -> Gửi Log và Xóa Kênh
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = interaction.customId.split('_')[2];
@@ -308,7 +394,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ tự động đóng sau 5 giây.`, ephemeral: false });
 
             try {
-                const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
+                const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);[cite: 1]
                 if (logChannel) {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('📊 Nhật Ký Đánh Giá Ticket Chi Tiết')
@@ -341,5 +427,4 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Điền Token Bot của bạn vào đây 👇
 client.login(process.env.DISCORD_TOKEN);
