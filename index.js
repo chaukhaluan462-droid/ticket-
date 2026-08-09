@@ -142,7 +142,7 @@ client.on('messageCreate', async message => {
             .addFields(
                 { name: '🛡️ Tổng số kèo đã hoàn thành', value: `**${totalCompleted}** kèo`, inline: true },
                 { name: '⭐ Độ uy tín trung bình', value: avgRatingText, inline: true },
-                { name: '💰 Tổng tiền cọc đã xử lý', value: `**${formatVND(totalDepositNum)}**`, inline: false },
+                { name: '💰 Tổng tiền cọc ', value: `**${formatVND(totalDepositNum)}**`, inline: false },
                 { name: '📝 Tổng số lượt đánh giá', value: `**${totalCount}** lượt`, inline: false }
             )
             .setColor('#00ffcc')
@@ -609,7 +609,6 @@ client.on('interactionCreate', async interaction => {
                         .addFields(
                             { name: '👤 Người mở ticket', value: data.opener, inline: true },
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: true },
-                            { name: '💰 Số tiền cọc', value: data.deposit, inline: true },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: true },
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: true },
                             { name: '⭐ Đánh giá lượt này', value: `${'⭐'.repeat(stars)} (${stars}/5)`, inline: true },
