@@ -167,6 +167,35 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `✅ **${staff.tag}** đã nhận xử lý ticket này!`, ephemeral: false });
         }
 
+        // Hủy Nhận Ticket (Unclaim) để đổi người khác
+        if (interaction.customId === 'unclaim_ticket') {
+            const channel = interaction.channel;
+            const staff = interaction.user;
+
+            // Kiểm tra xem ticket này có đang được nhận bởi ai không
+            if (!ticketData[channel.id] || ticketData[channel.id].claimer === 'Chưa có ai nhận') {
+                return interaction.reply({ content: '❌ Ticket này hiện tại chưa có ai nhận để mà hủy!', ephemeral: true });
+            }
+
+            // Đặt lại dữ liệu về chưa có ai nhận
+            ticketData[channel.id].claimer = 'Chưa có ai nhận';
+
+            // Tìm lại tin nhắn chào mừng để update lại bảng Embed thành "Đang chờ..."
+            const messages = await channel.messages.fetch({ limit: 10 });
+            const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
+
+            if (welcomeMessage) {
+                const oldEmbed = welcomeMessage.embeds[0];
+                const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(
+                    { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sử.', inline: false }
+                );
+                await welcomeMessage.edit({ embeds: [updatedEmbed] });
+            }
+
+            await interaction.reply({ content: `🔄 **${staff.tag}** đã hủy nhận ticket. Trạng thái đã được đưa về chờ tiếp nhận!`, ephemeral: false });
+        }
+
         // Khi bấm nút "Thêm Người" -> Hiện menu chọn thành viên (Chỉ người bấm mới thấy)
         if (interaction.customId === 'add_user_btn') {
             const selectMenu = new UserSelectMenuBuilder()
