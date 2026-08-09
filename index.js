@@ -26,6 +26,7 @@ const GDTG_ROLE_ID = '1527975554115178506';
 
 const ticketData = {};
 const completedTickets = {}; 
+const staffRatings = {}; // Lưu trữ lịch sử đánh giá sao của từng Staff: { staffId: { totalStars: 0, count: 0 } }
 
 client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
@@ -33,6 +34,39 @@ client.once('ready', () => {
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
+
+    // Lệnh xem bảng xếp hạng Top Staff
+    if (message.content === '!topstaff') {
+        if (Object.keys(completedTickets).length === 0) {
+            return message.reply('📊 Hiện tại chưa có Staff nào hoàn thành kèo GDTG nào.');
+        }
+
+        // Sắp xếp các staff theo số lượng kèo giảm dần
+        const sortedStaff = Object.entries(completedTickets)
+            .sort((a, b) => b[1] - a[1]);
+
+        let description = '';
+        sortedStaff.forEach(([staffId, count], index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `**#${index + 1}**`;
+            
+            // Tính điểm trung bình sao nếu có
+            let avgRatingText = 'Chưa có đánh giá';
+            if (staffRatings[staffId] && staffRatings[staffId].count > 0) {
+                const avg = (staffRatings[staffId].totalStars / staffRatings[staffId].count).toFixed(1);
+                avgRatingText = `${avg}/5 ⭐ (${staffRatings[staffId].count} đánh giá)`;
+            }
+
+            description += `${medal} <@${staffId}> — **${count}** kèo *(Độ uy tín: ${avgRatingText})*\n`;
+        });
+
+        const topEmbed = new EmbedBuilder()
+            .setTitle('🏆 BẢNG XẾP HẠNG TOP STAFF GDTG')
+            .setDescription(description)
+            .setColor('#ffd700')
+            .setTimestamp();
+
+        return message.reply({ embeds: [topEmbed] });
+    }
 
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
@@ -394,7 +428,7 @@ client.on('interactionCreate', async interaction => {
     // Xử lý submit modal đánh giá
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('modal_review_')) {
-            const stars = interaction.customId.split('_')[2];
+            const stars = Number(interaction.customId.split('_')[2]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
             const channel = interaction.channel;
             const reviewerUser = interaction.user;
@@ -449,17 +483,29 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            // --- XỬ LÝ ĐỊNH DẠNG SỐ KÈO GDTG ---
+            // --- XỬ LÝ TÍNH SỐ KÈO VÀ ĐIỂM TRUNG BÌNH SAO ---
             let totalCompletedText = '0 kèo';
             let staffFieldTitle = 'Số kèo GDTG';
             let staffIdMatch = data.claimer.match(/<@!?(\d+)>/);
             
+            let avgRatingDisplay = 'Chưa có';
+
             if (staffIdMatch) {
                 const staffId = staffIdMatch[1];
-                completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
                 
-                // Định dạng hiển thị: @Tên_Staff đã thành: (số kèo) kèo
+                // Tăng số kèo hoàn thành
+                completedTickets[staffId] = (completedTickets[staffId] || 0) + 1;
                 totalCompletedText = `<@${staffId}> đã thành: **${completedTickets[staffId]}** kèo`;
+
+                // Lưu trữ và tính điểm trung bình sao cho Staff
+                if (!staffRatings[staffId]) {
+                    staffRatings[staffId] = { totalStars: 0, count: 0 };
+                }
+                staffRatings[staffId].totalStars += stars;
+                staffRatings[staffId].count += 1;
+
+                const avg = (staffRatings[staffId].totalStars / staffRatings[staffId].count).toFixed(1);
+                avgRatingDisplay = `${avg}/5 ⭐ (Tổng ${staffRatings[staffId].count} đánh giá)`;
             }
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
@@ -474,7 +520,8 @@ client.on('interactionCreate', async interaction => {
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: true },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: true },
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: true },
-                            { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
+                            { name: '⭐ Đánh giá lượt này', value: `${'⭐'.repeat(stars)} (${stars}/5)`, inline: true },
+                            { name: '📈 Điểm TB của Staff', value: avgRatingDisplay, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
                             { name: staffFieldTitle, value: totalCompletedText, inline: false }
                         )
