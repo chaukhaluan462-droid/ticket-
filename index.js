@@ -37,9 +37,14 @@ client.on('messageCreate', async message => {
 
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
-            .setTitle('🎫 Hệ Thống Hỗ Trợ (Ticket)')
-            .setDescription('Nhấn vào nút bên dưới để tạo yêu cầu hỗ trợ riêng tư.')
-            .setColor('#0099ff');
+    .setTitle('🎫 Kênh Hỗ Trợ & Trung Gian')
+    .setDescription(`>>> 🛡️ **HỆ THỐNG TICKET TRUNG GIAN & HỖ TRỢ** 🛡️
+
+• 📌 **Mục đích:** Hỗ trợ giao dịch an toàn, giải đáp thắc mắc và xử lý khiếu nại.
+• 📩 **Cách sử dụng:** Nhấn nút **Tạo Ticket** bên dưới để mở kênh chat riêng tư 1-1 với đội ngũ quản trị viên.
+
+✨ *Cam kết uy tín - Bảo mật tuyệt đối - Phản hồi nhanh chóng!*`)
+    .setColor('#0099ff');
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
