@@ -30,11 +30,10 @@ client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
 });
 
-// Lệnh tạo bảng ticket & Lệnh thêm người vào ticket (!add)
+// Lệnh tạo bảng ticket
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Lệnh setup bảng tạo ticket
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
             .setTitle('🎫 Hệ Thống Hỗ Trợ (Ticket)')
@@ -52,35 +51,6 @@ client.on('messageCreate', async message => {
         await message.channel.send({ embeds: [embed], components: [row] });
         await message.delete();
     }
-
-    // Lệnh thêm người vào ticket: gõ !add @user
-    if (message.content.startsWith('!add')) {
-        const channel = message.channel;
-
-        // Kiểm tra xem kênh hiện tại có phải là kênh ticket không
-        if (!channel.name.startsWith('ticket-')) {
-            return message.reply({ content: '❌ Lệnh này chỉ có thể sử dụng bên trong các kênh ticket!' });
-        }
-
-        const targetUser = message.mentions.users.first();
-        if (!targetUser) {
-            return message.reply({ content: '❌ Vui lòng tag người bạn muốn thêm vào. Ví dụ: `!add @TênNgườiĐó`' });
-        }
-
-        try {
-            // Cấp quyền tường minh (Override) cho riêng user đó được phép thấy và chat trong kênh này
-            await channel.permissionOverwrites.create(targetUser.id, {
-                ViewChannel: true,
-                SendMessages: true,
-                ReadMessageHistory: true
-            });
-
-            await message.channel.send(`✅ Đã thêm thành công ${targetUser} vào ticket này bởi ${message.author}!`);
-        } catch (error) {
-            console.error(error);
-            await message.reply({ content: '❌ Có lỗi xảy ra khi thêm người vào ticket!' });
-        }
-    }
 });
 
 client.on('interactionCreate', async interaction => {
@@ -92,27 +62,27 @@ client.on('interactionCreate', async interaction => {
             const user = interaction.user;
 
             const channel = await guild.channels.create({
-            name: `ticket-${user.username}`,
-            type: ChannelType.GuildText,
-            permissionOverwrites: [
-                {
-                    id: guild.id, // Chặn mọi người không liên quan
-                    deny: [PermissionsBitField.Flags.ViewChannel],
-                },
-                {
-                    id: user.id, // Người tạo ticket được xem
-                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
-                },
-                {
-                    id: GDTG_ROLE_ID, // Cấp quyền cho role gdtg được xem kênh ticket này
-                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
-                },
-                {
-                    id: client.user.id, // Bot được phép quản lý
-                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
-                },
-            ],
-        });
+                name: `ticket-${user.username}`,
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    {
+                        id: guild.id, // Chặn mọi người không liên quan
+                        deny: [PermissionsBitField.Flags.ViewChannel],
+                    },
+                    {
+                        id: user.id, // Người tạo ticket được xem
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                    {
+                        id: GDTG_ROLE_ID, // Cấp quyền cho role gdtg được xem kênh ticket này
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                    {
+                        id: client.user.id, // Bot được phép quản lý
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                ],
+            });
 
             ticketData[channel.id] = {
                 opener: `${user.tag} (<@${user.id}>)`,
@@ -122,11 +92,13 @@ client.on('interactionCreate', async interaction => {
 
             const welcomeEmbed = new EmbedBuilder()
                 .setTitle(`Chào mừng, ${user.username}!`)
-                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Đóng Ticket** khi hoàn tất.\n\n*Mẹo: Bạn có thể gõ `!add @tên_người_khác` để thêm người bất kỳ vào ticket này.*')
+                .setDescription('Vui lòng trình bày vấn đề của bạn. Nhấn **Nhận Ticket** nếu bạn là Staff, hoặc **Thêm Người** để kéo thành viên khác vào.')
                 .setColor('#00ff00');
 
+            // Thêm nút "Thêm Người" (Add User) nằm chung hàng nút bấm
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
+                new ButtonBuilder().setCustomId('add_user_prompt').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
@@ -153,6 +125,25 @@ client.on('interactionCreate', async interaction => {
             }
 
             await interaction.reply({ content: `✅ **${staff.tag}** đã nhận xử lý ticket này!`, ephemeral: false });
+        }
+
+        // Khi bấm nút "Thêm Người" -> Hiện bảng Modal điền ID hoặc Tên người cần thêm
+        if (interaction.customId === 'add_user_prompt') {
+            const modal = new ModalBuilder()
+                .setCustomId('modal_add_user')
+                .setTitle('Thêm thành viên vào Ticket');
+
+            const userInput = new TextInputBuilder()
+                .setCustomId('user_id_input')
+                .setLabel('Nhập ID của người muốn thêm vào:')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Ví dụ: 987654321012345678')
+                .setRequired(true);
+
+            const row = new ActionRowBuilder().addComponents(userInput);
+            modal.addComponents(row);
+
+            await interaction.showModal(modal);
         }
 
         // Đóng Ticket -> Gửi bảng đánh giá sao
@@ -208,8 +199,34 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 2. Xử lý khi người dùng bấm Gửi (Submit) bảng Modal đánh giá
+    // 2. Xử lý khi người dùng gửi thông tin từ các bảng Modal
     if (interaction.isModalSubmit()) {
+        // Xử lý thêm người qua Modal ID
+        if (interaction.customId === 'modal_add_user') {
+            const targetId = interaction.fields.getTextInputValue('user_id_input').trim();
+            const channel = interaction.channel;
+
+            try {
+                const targetUser = await client.users.fetch(targetId);
+                if (!targetUser) {
+                    return interaction.reply({ content: '❌ Không tìm thấy người dùng với ID này!', ephemeral: true });
+                }
+
+                // Cấp quyền tường minh cho phép user nhìn thấy kênh
+                await channel.permissionOverwrites.create(targetUser.id, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                    ReadMessageHistory: true
+                });
+
+                await interaction.reply({ content: `✅ Đã thêm thành công ${targetUser} vào ticket này!`, ephemeral: false });
+            } catch (error) {
+                console.error(error);
+                await interaction.reply({ content: '❌ ID không hợp lệ hoặc có lỗi xảy ra khi cấp quyền!', ephemeral: true });
+            }
+        }
+
+        // Xử lý đánh giá sao
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = interaction.customId.split('_')[2];
             const reviewContent = interaction.fields.getTextInputValue('review_text');
