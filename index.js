@@ -107,7 +107,6 @@ client.on('interactionCreate', async interaction => {
                 .setColor('#00ffcc')
                 .setTimestamp();
 
-            // Đã tích hợp đủ nút Nhận, Hủy Nhận, Chuyển Ticket, Thêm Người, Đóng Ticket
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
@@ -116,7 +115,10 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [welcomeEmbed], components: [actionRow] });
+            // Gửi tin nhắn và tự động ghim (Pin) panel lên đầu kênh
+            const sentMessage = await channel.send({ content: `<@${user.id}>`, embeds: [welcomeEmbed], components: [actionRow] });
+            await sentMessage.pin();
+
             await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
         }
 
@@ -169,7 +171,10 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [supportEmbed], components: [actionRow] });
+            // Gửi tin nhắn hỗ trợ và tự động ghim (Pin) panel lên đầu kênh
+            const sentMessageSupport = await channel.send({ content: `<@${user.id}>`, embeds: [supportEmbed], components: [actionRow] });
+            await sentMessageSupport.pin();
+
             await interaction.editReply({ content: `✅ Kênh hỗ trợ của bạn đã được tạo tại: ${channel}` });
         }
 
