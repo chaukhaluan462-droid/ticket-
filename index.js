@@ -94,7 +94,8 @@ client.on('interactionCreate', async interaction => {
             ticketData[channel.id] = {
                 opener: `${user.tag} (<@${user.id}>)`,
                 claimer: 'Chưa có ai nhận',
-                closer: 'Chưa xác định'
+                closer: 'Chưa xác định',
+                reviewer: 'Chưa đánh giá'
             };
 
             const welcomeEmbed = new EmbedBuilder()
@@ -115,7 +116,7 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Gửi tin nhắn và tự động ghim (Pin) panel lên đầu kênh
+            // Gửi tin nhắn có ping role GDTG và tự động ghim (Pin) panel lên đầu kênh[cite: 4]
             const sentMessage = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [welcomeEmbed], components: [actionRow] });
             await sentMessage.pin();
 
@@ -150,7 +151,8 @@ client.on('interactionCreate', async interaction => {
             ticketData[channel.id] = {
                 opener: `${user.tag} (<@${user.id}>)`,
                 claimer: 'Chưa có ai nhận',
-                closer: 'Chưa xác định'
+                closer: 'Chưa xác định',
+                reviewer: 'Chưa đánh giá'
             };
 
             const supportEmbed = new EmbedBuilder()
@@ -171,7 +173,7 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Gửi tin nhắn hỗ trợ và tự động ghim (Pin) panel lên đầu kênh
+            // Gửi tin nhắn hỗ trợ có ping role GDTG và tự động ghim (Pin) panel lên đầu kênh[cite: 4]
             const sentMessageSupport = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [supportEmbed], components: [actionRow] });
             await sentMessageSupport.pin();
 
@@ -391,7 +393,10 @@ client.on('interactionCreate', async interaction => {
             const stars = interaction.customId.split('_')[2];
             const reviewContent = interaction.fields.getTextInputValue('review_text');
             const channel = interaction.channel;
-            const data = ticketData[channel.id] || { opener: 'Không rõ', claimer: 'Chưa có', closer: 'Không rõ' };
+            const reviewerUser = interaction.user; // Lấy thông tin người bấm đánh giá[cite: 4]
+            
+            const data = ticketData[channel.id] || { opener: 'Không rõ', claimer: 'Chưa có', closer: 'Không rõ', reviewer: 'Chưa đánh giá' };
+            data.reviewer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`; // Lưu lại người đánh giá[cite: 4]
 
             await interaction.reply({ content: `Cảm ơn bạn đã đánh giá! Kênh sẽ đóng sau 5 giây.`, ephemeral: false });
 
@@ -404,6 +409,7 @@ client.on('interactionCreate', async interaction => {
                             { name: '👤 Người mở ticket', value: data.opener, inline: false },
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: false },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: false },
+                            { name: '✍️ Người đánh giá', value: data.reviewer, inline: false }, // Hiển thị người đánh giá trong log[cite: 4]
                             { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5)`, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
                             { name: '📁 Tên kênh', value: channel.name, inline: false }
