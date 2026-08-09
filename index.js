@@ -110,9 +110,10 @@ client.on('interactionCreate', async interaction => {
                 .setTimestamp()
                 .setFooter({ text: 'Hệ thống Quản lý Ticket Tự Động', iconURL: interaction.guild.iconURL() });
 
-            // Giữ nguyên 3 nút: Nhận Ticket, Thêm Người, Đóng Ticket
+            // Đã thêm đầy đủ 4 nút: Nhận Ticket, Hủy Nhận, Thêm Người, Đóng Ticket
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
+                new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
                 new ButtonBuilder().setCustomId('add_user_btn').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
