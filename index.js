@@ -55,10 +55,8 @@ client.on('messageCreate', async message => {
             return message.reply('❌ Sai cú pháp! Vui lòng dùng: `!tiencoc @username <số_tiền>` (Ví dụ: `!tiencoc @Luandz. 10k` hoặc `!tiencoc @Luandz. 50000`)');
         }
 
-        // Lấy chuỗi tiền cọc từ arg thứ 2 (hoặc gộp các arg phía sau nếu có khoảng trắng)
         let rawAmountStr = args.slice(1).join('').toLowerCase();
         
-        // Chuyển đổi định dạng 'k' thành nghìn (ví dụ: 10k -> 10000, 50k -> 50000)
         let multiplier = 1;
         if (rawAmountStr.includes('k')) {
             multiplier = 1000;
@@ -80,10 +78,9 @@ client.on('messageCreate', async message => {
 
         const successEmbed = new EmbedBuilder()
             .setTitle('💰 CẬP NHẬT TIỀN CỌC THÀNH CÔNG')
-            .setDescription(`Đã cộng tiền cọc cho thành viên <@${targetUser.id}>`)
+            .setDescription(`Đã cập nhật tiền cọc cho thành viên <@${targetUser.id}>`)
             .addFields(
-                { name: '➕ Số tiền giao dịch thêm', value: `**${args.slice(1).join(' ')}** (${finalAmount.toLocaleString('vi-VN')} VNĐ)`, inline: true },
-                { name: '💎 Tổng tiền cọc hiện tại', value: `**${userDeposits[targetUser.id].toLocaleString('vi-VN')}** VNĐ`, inline: true }
+                { name: '💎 Tổng tiền cọc hiện tại', value: `**${userDeposits[targetUser.id].toLocaleString('vi-VN')}** VNĐ`, inline: false }
             )
             .setColor('#00ffcc')
             .setTimestamp();
@@ -97,7 +94,6 @@ client.on('messageCreate', async message => {
             return message.reply('📊 Hiện tại chưa có dữ liệu tiền cọc nào trong hệ thống.');
         }
 
-        // Sắp xếp người dùng theo số tiền cọc giảm dần
         const sortedDeposits = Object.entries(userDeposits)
             .sort((a, b) => b[1] - a[1]);
 
@@ -550,7 +546,6 @@ client.on('interactionCreate', async interaction => {
 
             const dealInfoText = `• **Tên người cần giao dịch:** ${dealPerson}\n• **Đồ cần giao dịch:** ${dealItem}`;
 
-            // LƯU ĐẦY ĐỦ THÔNG TIN NGAY TỪ ĐẦU
             ticketData[channel.id] = {
                 openerId: user.id,
                 opener: `<@${user.id}>`,
