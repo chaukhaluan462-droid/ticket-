@@ -211,7 +211,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
+                ticketData[channel.id] = { openerId: '', opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
 
             if (ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
@@ -244,7 +244,7 @@ client.on('interactionCreate', async interaction => {
             const staff = interaction.user;
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
+                ticketData[channel.id] = { openerId: '', opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
 
             if (ticketData[channel.id].claimer === 'Chưa có ai nhận') {
@@ -294,12 +294,10 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn đồng nghiệp bạn muốn chuyển giao vé:', components: [row], ephemeral: true });
         }
 
-        // 5. Thêm Người (ĐÃ KIỂM TRA QUYỀN STAFF)
+        // 5. Thêm Người (Chỉ Staff mới dùng được)
         if (interaction.customId === 'add_user_btn') {
             const member = interaction.member;
-            
-            // Kiểm tra xem người bấm có Role Staff hoặc có quyền Quản trị viên không
-            const isStaff = member.roles.cache.has("1527975554115178506") || member.permissions.has(PermissionsBitField.Flags.Administrator);
+            const isStaff = member.roles.cache.has(1527975554115178506) || member.permissions.has(PermissionsBitField.Flags.Administrator);
             if (!isStaff) {
                 return interaction.reply({ content: '❌ Chỉ có **Staff** mới có quyền thêm người vào ticket này!', ephemeral: true });
             }
@@ -324,7 +322,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Không có thông tin' };
+                ticketData[channel.id] = { openerId: '', opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Không có thông tin' };
             }
             ticketData[channel.id].closer = `<@${closerUser.id}>`;
 
@@ -353,6 +351,11 @@ client.on('interactionCreate', async interaction => {
 
             let data = ticketData[channel.id];
             let openerId = data ? data.openerId : null;
+
+            if (!openerId && data && data.opener) {
+                const m = data.opener.match(/<@!?(\d+)>/);
+                if (m) openerId = m[1];
+            }
 
             if (!openerId) {
                 try {
@@ -390,9 +393,13 @@ client.on('interactionCreate', async interaction => {
 
     // Xử lý menu chọn user
     if (interaction.isUserSelectMenu()) {
+        const channel = interaction.channel;
+        if (!ticketData[channel.id]) {
+            ticketData[channel.id] = { openerId: '', opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
+        }
+
         if (interaction.customId === 'select_user_to_add') {
             const targetUser = interaction.users.first();
-            const channel = interaction.channel;
             try {
                 await channel.permissionOverwrites.create(targetUser.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
                 await interaction.update({ content: `✅ Đã thêm **${targetUser.tag}** vào ticket!`, components: [] });
@@ -405,10 +412,9 @@ client.on('interactionCreate', async interaction => {
 
         if (interaction.customId === 'select_staff_to_transfer') {
             const targetStaff = interaction.users.first();
-            const channel = interaction.channel;
             const currentStaff = interaction.user;
             if (targetStaff.id === currentStaff.id) return interaction.update({ content: '❌ Bạn không thể tự chuyển vé lại cho chính mình!', components: [] });
-            if (!ticketData[channel.id]) { ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' }; }
+            
             ticketData[channel.id].claimer = `<@${targetStaff.id}>`;
             try {
                 await channel.permissionOverwrites.create(targetStaff.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
@@ -465,6 +471,7 @@ client.on('interactionCreate', async interaction => {
 
             const dealInfoText = `• **Tên người cần giao dịch:** ${dealPerson}\n• **Đồ cần giao dịch:** ${dealItem}`;
 
+            // LƯU ĐẦY ĐỦ THÔNG TIN NGAY TỪ ĐẦU
             ticketData[channel.id] = {
                 openerId: user.id,
                 opener: `<@${user.id}>`,
@@ -534,7 +541,18 @@ client.on('interactionCreate', async interaction => {
                 };
             } else {
                 if (!data.opener || data.opener === 'Không rõ') {
-                    data.opener = `<@${data.openerId}>`;
+                    if (data.openerId) {
+                        data.opener = `<@${data.openerId}>`;
+                    } else {
+                        try {
+                            const fetchedMessages = await channel.messages.fetch({ limit: 10 });
+                            const pinnedMsg = fetchedMessages.find(m => m.pinned);
+                            if (pinnedMsg) {
+                                const match = pinnedMsg.content.match(/<@!?(\d+)>/);
+                                if (match) data.opener = `<@${match[1]}>`;
+                            }
+                        } catch (e) {}
+                    }
                 }
                 data.reviewer = `<@${reviewerUser.id}>`;
                 if (!data.closer || data.closer === 'Chưa xác định') {
@@ -572,11 +590,11 @@ client.on('interactionCreate', async interaction => {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('📊 Nhật Ký Giao Dịch & Đánh Giá Ticket')
                         .addFields(
-                            { name: '👤 Người mở ticket', value: data.opener, inline: true },
-                            { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: true },
-                            { name: '📋 Thông tin giao dịch', value: data.dealInfo || 'Không có', inline: false },
-                            { name: '🔒 Người đóng ticket', value: data.closer, inline: true },
-                            { name: '✍️ Người đánh giá', value: data.reviewer, inline: true },
+                            { name: '👤 Người mở ticket', value: data.opener || 'Không rõ', inline: true },
+                            { name: '🙋‍♂️ Người nhận ticket', value: data.claimer || 'Chưa có', inline: true },
+                            { name: '📋 Thông tin giao dịch', value: data.dealInfo || 'Không có thông tin', inline: false },
+                            { name: '🔒 Người đóng ticket', value: data.closer || 'Chưa rõ', inline: true },
+                            { name: '✍️ Người đánh giá', value: data.reviewer || 'Chưa rõ', inline: true },
                             { name: '⭐ Đánh giá lượt này', value: `${'⭐'.repeat(stars)} (${stars}/5)`, inline: true },
                             { name: '📈 Điểm TB của Staff', value: avgRatingDisplay, inline: true },
                             { name: '💬 Lời nhận xét', value: reviewContent, inline: false },
