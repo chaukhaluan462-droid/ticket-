@@ -23,33 +23,10 @@ const client = new Client({
 
 const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
-const OWNER_ROLE_ID = '1524373809447047279'; // Thay ID Role Owner của server bạn vào đây
 
 const ticketData = {};
 const completedTickets = {}; 
 const staffRatings = {}; 
-const staffTotalDeposits = {}; // Lưu trữ tổng số tiền cọc Staff đã xử lý: { staffId: số_tiền_numeric }
-
-// Hàm chuyển đổi chuỗi tiền cọc (VD: "500k", "1tr", "2,000,000") thành số
-function parseDeposit(str) {
-    if (!str || str === 'Chưa cập nhật' || str === 'Không áp dụng') return 0;
-    let clean = String(str).toLowerCase().replace(/[,.\sđvn]/g, '');
-    let multiplier = 1;
-    if (clean.includes('k')) {
-        multiplier = 1000;
-        clean = clean.replace('k', '');
-    } else if (clean.includes('m') || clean.includes('tr')) {
-        multiplier = 1000000;
-        clean = clean.replace(/[mtr]/g, '');
-    }
-    let num = parseFloat(clean);
-    return isNaN(num) ? 0 : num * multiplier;
-}
-
-// Hàm định dạng số tiền thành dạng VNĐ dễ đọc
-function formatVND(num) {
-    return num.toLocaleString('vi-VN') + ' VNĐ';
-}
 
 client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
@@ -58,34 +35,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Lệnh chỉnh sửa tiền cọc cho Staff (Dành riêng cho Owner): !tiencoc @staff 500k (hoặc -500k để giảm)
-    if (message.content.startsWith('!tiencoc')) {
-        if (!message.member.roles.cache.has(OWNER_ROLE_ID)) {
-            return message.reply('❌ Bạn không có quyền sử dụng lệnh này (Yêu cầu Role Owner).');
-        }
-
-        const args = message.content.split(' ');
-        const targetUser = message.mentions.users.first();
-        const amountStr = args[2];
-
-        if (!targetUser || !amountStr) {
-            return message.reply('❌ Sai cú pháp! Ví dụ: `!tiencoc @username 500000` hoặc `!tiencoc @username 1tr`');
-        }
-
-        const staffId = targetUser.id;
-        const depositChange = parseDeposit(amountStr);
-
-        if (!staffTotalDeposits[staffId]) {
-            staffTotalDeposits[staffId] = 0;
-        }
-
-        // Nếu bạn muốn set thẳng số tiền thay vì cộng dồn, hãy đổi thành: staffTotalDeposits[staffId] = parseDeposit(amountStr);
-        staffTotalDeposits[staffId] += depositChange;
-
-        return message.reply(`✅ Đã cập nhật thành công tổng tiền cọc cho <@${staffId}>. Tổng hiện tại: **${formatVND(staffTotalDeposits[staffId])}**`);
-    }
-
-    // Lệnh xem bảng xếp hạng Top Staff
+    // Lệnh xem bảng xếp hạng Top Staff (Số kèo)
     if (message.content === '!topstaff') {
         if (Object.keys(completedTickets).length === 0) {
             return message.reply('📊 Hiện tại chưa có Staff nào hoàn thành kèo GDTG nào.');
@@ -116,30 +66,6 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [topEmbed] });
     }
 
-    // Lệnh xem bảng xếp hạng Top Tiền Cọc (!topcoc)
-    if (message.content === '!topcoc') {
-        if (Object.keys(staffTotalDeposits).length === 0) {
-            return message.reply('📊 Hiện tại chưa có Staff nào có dữ liệu tiền cọc.');
-        }
-
-        const sortedDepositStaff = Object.entries(staffTotalDeposits)
-            .sort((a, b) => b[1] - a[1]);
-
-        let description = '';
-        sortedDepositStaff.forEach(([staffId, totalDeposit], index) => {
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `**#${index + 1}**`;
-            description += `${medal} <@${staffId}> — **${formatVND(totalDeposit)}**\n`;
-        });
-
-        const topDepositEmbed = new EmbedBuilder()
-            .setTitle('🏆 BẢNG XẾP HẠNG TOP TIỀN CỌC GDTG')
-            .setDescription(description)
-            .setColor('#00ffcc')
-            .setTimestamp();
-
-        return message.reply({ embeds: [topDepositEmbed] });
-    }
-
     // Lệnh kiểm tra chỉ số của Staff bất kỳ (!stats @staff)
     if (message.content.startsWith('!stats')) {
         const targetUser = message.mentions.users.first();
@@ -149,7 +75,6 @@ client.on('messageCreate', async message => {
 
         const staffId = targetUser.id;
         const totalCompleted = completedTickets[staffId] || 0;
-        const totalDepositNum = staffTotalDeposits[staffId] || 0;
 
         let avgRatingText = 'Chưa có đánh giá';
         let totalCount = 0;
@@ -166,7 +91,6 @@ client.on('messageCreate', async message => {
             .addFields(
                 { name: '🛡️ Tổng số kèo đã hoàn thành', value: `**${totalCompleted}** kèo`, inline: true },
                 { name: '⭐ Độ uy tín trung bình', value: avgRatingText, inline: true },
-                { name: '💰 Tổng tiền cọc ', value: `**${formatVND(totalDepositNum)}**`, inline: false },
                 { name: '📝 Tổng số lượt đánh giá', value: `**${totalCount}** lượt`, inline: false }
             )
             .setColor('#00ffcc')
@@ -181,7 +105,7 @@ client.on('messageCreate', async message => {
             .setDescription(`>>> 🛡️ **HỆ THỐNG TICKET TRUNG GIAN & HỖ TRỢ** 🛡️
 
 • 📌 **Mục đích:** Hỗ trợ giao dịch an toàn, giải đáp thắc mắc và xử lý khiếu nại.
-• 📩 **Cách sử dụng:** Nhấn nút **Tạo Ticket** để giao dịch hoặc nút **Hỗ Trợ** nếu bạn cần giải đáp thắc mắc chung.
+• 📩 **Cách sử dụng:** Nhấn nút **Tạo Ticket GDTG** để mở form nhập thông tin giao dịch hoặc nút **Hỗ Trợ** nếu bạn cần giải đáp thắc mắc chung.
 
 ✨ *Cam kết uy tín - Bảo mật tuyệt đối - Phản hồi nhanh chóng!*`)
             .setColor('#0099ff');
@@ -207,65 +131,48 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         
-        // 1. Tạo Ticket Giao Dịch (Đã gỡ nút Nhập Tiền Cọc)
+        // 1. Mở Modal Form Nhập Thông Tin Giao Dịch Khi Bấm Tạo Ticket GDTG
         if (interaction.customId === 'create_ticket') {
-            const guild = interaction.guild;
-            const user = interaction.user;
+            const modal = new ModalBuilder()
+                .setCustomId('modal_gdtg_form')
+                .setTitle('📋 NHẬP THÔNG TIN GIAO DỊCH');
 
-            await interaction.deferReply({ ephemeral: true });
+            const buyerInput = new TextInputBuilder()
+                .setCustomId('buyer_name')
+                .setLabel('1. Tên Người Mua')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Nhập tên hoặc tag người mua...')
+                .setRequired(true);
 
-            const existingChannel = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
-            if (existingChannel) {
-                return interaction.editReply({ content: `❌ Bạn đã có một ticket đang mở tại ${existingChannel} rồi!` });
-            }
+            const sellerInput = new TextInputBuilder()
+                .setCustomId('seller_name')
+                .setLabel('2. Tên Người Bán')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Nhập tên hoặc tag người bán...')
+                .setRequired(true);
 
-            const channel = await guild.channels.create({
-                name: `ticket-${user.username}`,
-                type: ChannelType.GuildText,
-                parent: '1527855907109736528',
-                position: 99, 
-                permissionOverwrites: [
-                    { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                    { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                    { id: GDTG_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                    { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                ],
-            });
+            const itemInput = new TextInputBuilder()
+                .setCustomId('item_name')
+                .setLabel('3. Tài Nguyên / Game Giao Dịch')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Ví dụ: Acc Blox Fruits, Robux, FC Mobile...')
+                .setRequired(true);
 
-            ticketData[channel.id] = {
-                opener: `${user.tag} (<@${user.id}>)`,
-                claimer: 'Chưa có ai nhận',
-                closer: 'Chưa xác định',
-                reviewer: 'Chưa đánh giá',
-                deposit: 'Chưa cập nhật'
-            };
+            const amountInput = new TextInputBuilder()
+                .setCustomId('deal_amount')
+                .setLabel('4. Số Tiền Giao Dịch')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Ví dụ: 500.000 VNĐ hoặc 500k...')
+                .setRequired(true);
 
-            const welcomeEmbed = new EmbedBuilder()
-                .setTitle('🎫 KÊNH HỖ TRỢ & GIAO DỊCH RIÊNG TƯ')
-                .setDescription(`Chào mừng <@${user.id}> đã tạo ticket hệ thống! Vui lòng cung cấp chi tiết vấn đề hoặc thông tin giao dịch của bạn tại đây.`)
-                .addFields(
-                    { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
-                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
-                )
-                .setColor('#00ffcc')
-                .setTimestamp();
-
-            // Gói gọn các nút thao tác (Đã loại bỏ nút Nhập Tiền Cọc)
-            const actionRow1 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
-                new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
-                new ButtonBuilder().setCustomId('transfer_ticket_btn').setLabel('Chuyển Ticket').setStyle(ButtonStyle.Secondary).setEmoji('➡️')
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(buyerInput),
+                new ActionRowBuilder().addComponents(sellerInput),
+                new ActionRowBuilder().addComponents(itemInput),
+                new ActionRowBuilder().addComponents(amountInput)
             );
 
-            const actionRow2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('add_user_btn').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
-                new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
-            );
-
-            const sentMessage = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [welcomeEmbed], components: [actionRow1, actionRow2] });
-            await sentMessage.pin();
-
-            await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
+            await interaction.showModal(modal);
         }
 
         // 2. Tạo Ticket Hỗ Trợ (Support)
@@ -298,7 +205,7 @@ client.on('interactionCreate', async interaction => {
                 claimer: 'Chưa có ai nhận',
                 closer: 'Chưa xác định',
                 reviewer: 'Chưa đánh giá',
-                deposit: 'Không áp dụng'
+                dealInfo: 'Hỗ trợ chung (Không phải giao dịch)'
             };
 
             const supportEmbed = new EmbedBuilder()
@@ -338,7 +245,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', deposit: 'Chưa cập nhật' };
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
 
             if (ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
@@ -371,7 +278,7 @@ client.on('interactionCreate', async interaction => {
             const staff = interaction.user;
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', deposit: 'Chưa cập nhật' };
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
 
             if (ticketData[channel.id].claimer === 'Chưa có ai nhận') {
@@ -398,7 +305,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `🔄 **${staff.tag}** đã hủy nhận ticket.`, ephemeral: false });
         }
 
-        // 6. Chuyển Nhượng Ticket
+        // 5. Chuyển Nhượng Ticket
         if (interaction.customId === 'transfer_ticket_btn') {
             const channel = interaction.channel;
             const staff = interaction.user;
@@ -421,7 +328,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn đồng nghiệp bạn muốn chuyển giao vé:', components: [row], ephemeral: true });
         }
 
-        // 7. Thêm Người
+        // 6. Thêm Người
         if (interaction.customId === 'add_user_btn') {
             const selectMenu = new UserSelectMenuBuilder()
                 .setCustomId('select_user_to_add')
@@ -433,7 +340,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn thành viên:', components: [row], ephemeral: true });
         }
 
-        // 8. Đóng Ticket
+        // 7. Đóng Ticket
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const closerUser = interaction.user;
@@ -443,7 +350,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', deposit: 'Chưa cập nhật' };
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Không có thông tin' };
             }
             ticketData[channel.id].closer = `${closerUser.tag} (<@${closerUser.id}>)`;
 
@@ -465,7 +372,7 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // 9. Mở Modal Đánh Giá Sao
+        // 8. Mở Modal Đánh Giá Sao
         if (interaction.customId.startsWith('rate_')) {
             const stars = interaction.customId.split('_')[1];
             const modal = new ModalBuilder()
@@ -515,7 +422,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', deposit: 'Chưa cập nhật' };
+                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
             ticketData[channel.id].claimer = `${targetStaff.tag} (<@${targetStaff.id}>)`;
 
@@ -550,8 +457,78 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý submit modal đánh giá
+    // Xử lý Submit Modal (Bao gồm Modal Form GDTG và Modal Đánh Giá)
     if (interaction.isModalSubmit()) {
+        
+        // A. Xử lý khi khách điền xong Form Thông Tin Giao Dịch
+        if (interaction.customId === 'modal_gdtg_form') {
+            const guild = interaction.guild;
+            const user = interaction.user;
+
+            const buyer = interaction.fields.getTextInputValue('buyer_name');
+            const seller = interaction.fields.getTextInputValue('seller_name');
+            const item = interaction.fields.getTextInputValue('item_name');
+            const amount = interaction.fields.getTextInputValue('deal_amount');
+
+            await interaction.deferReply({ ephemeral: true });
+
+            const existingChannel = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
+            if (existingChannel) {
+                return interaction.editReply({ content: `❌ Bạn đã có một ticket đang mở tại ${existingChannel} rồi!` });
+            }
+
+            const channel = await guild.channels.create({
+                name: `ticket-${user.username}`,
+                type: ChannelType.GuildText,
+                parent: '1527855907109736528',
+                position: 99, 
+                permissionOverwrites: [
+                    { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                    { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                    { id: GDTG_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                    { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                ],
+            });
+
+            const dealInfoText = `• **Người mua:** ${buyer}\n• **Người bán:** ${seller}\n• **Mặt hàng:** ${item}\n• **Số tiền:** ${amount}`;
+
+            ticketData[channel.id] = {
+                opener: `${user.tag} (<@${user.id}>)`,
+                claimer: 'Chưa có ai nhận',
+                closer: 'Chưa xác định',
+                reviewer: 'Chưa đánh giá',
+                dealInfo: dealInfoText
+            };
+
+            const welcomeEmbed = new EmbedBuilder()
+                .setTitle('🎫 THÔNG TIN GIAO DỊCH TRUNG GIAN')
+                .setDescription(`Chào mừng <@${user.id}> đã tạo ticket! Dưới đây là thông tin chi tiết về kèo giao dịch:`)
+                .addFields(
+                    { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
+                    { name: '📋 Chi tiết giao dịch', value: dealInfoText, inline: false },
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
+                )
+                .setColor('#00ffcc')
+                .setTimestamp();
+
+            const actionRow1 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
+                new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
+                new ButtonBuilder().setCustomId('transfer_ticket_btn').setLabel('Chuyển Ticket').setStyle(ButtonStyle.Secondary).setEmoji('➡️')
+            );
+
+            const actionRow2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('add_user_btn').setLabel('Thêm Người').setStyle(ButtonStyle.Secondary).setEmoji('➕'),
+                new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
+            );
+
+            const sentMessage = await channel.send({ content: `<@${user.id}> | <@&${GDTG_ROLE_ID}>`, embeds: [welcomeEmbed], components: [actionRow1, actionRow2] });
+            await sentMessage.pin();
+
+            await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
+        }
+
+        // B. Xử lý khi khách gửi đánh giá sao
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = Number(interaction.customId.split('_')[2]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
@@ -588,7 +565,7 @@ client.on('interactionCreate', async interaction => {
                     claimer: claimerText,
                     closer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`,
                     reviewer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`,
-                    deposit: 'Chưa cập nhật'
+                    dealInfo: 'Không có thông tin'
                 };
             } else {
                 if (!data.opener || data.opener === 'Không rõ') {
@@ -629,10 +606,11 @@ client.on('interactionCreate', async interaction => {
                 const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
                 if (logChannel) {
                     const logEmbed = new EmbedBuilder()
-                        .setTitle('📊 Nhật Ký Đánh Giá Ticket Chi Tiết')
+                        .setTitle('📊 Nhật Ký Giao Dịch & Đánh Giá Ticket')
                         .addFields(
                             { name: '👤 Người mở ticket', value: data.opener, inline: true },
                             { name: '🙋‍♂️ Người nhận ticket', value: data.claimer, inline: true },
+                            { name: '📋 Thông tin giao dịch', value: data.dealInfo || 'Không có', inline: false },
                             { name: '🔒 Người đóng ticket', value: data.closer, inline: true },
                             { name: '✍️ Người đánh giá', value: data.reviewer, inline: true },
                             { name: '⭐ Đánh giá lượt này', value: `${'⭐'.repeat(stars)} (${stars}/5)`, inline: true },
