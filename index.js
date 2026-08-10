@@ -30,12 +30,91 @@ const ticketData = {};
 const completedTickets = {}; 
 const staffRatings = {}; 
 
+// --- DỮ LIỆU CỌC ---
+const userDeposits = {}; // Lưu trữ số tiền cọc của user: { userId: số_tiền_nguyên_thủy }
+
 client.once('ready', () => {
     console.log(`Bot đã online với tên: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
+
+    // --- LỆNH QUẢN LÝ TIỀN CỌC: !tiencoc @user số_tiền ---
+    if (message.content.startsWith('!tiencoc')) {
+        const member = message.member;
+        const isStaff = member.roles.cache.has(GDTG_ROLE_ID) || member.permissions.has(PermissionsBitField.Flags.Administrator);
+        if (!isStaff) {
+            return message.reply({ content: '❌ Chỉ có **Staff** hoặc **Admin** mới có quyền cộng/chỉnh sửa tiền cọc!', ephemeral: true });
+        }
+
+        const args = message.content.split(' ').slice(1);
+        const targetUser = message.mentions.users.first();
+        
+        if (!targetUser || args.length < 2) {
+            return message.reply('❌ Sai cú pháp! Vui lòng dùng: `!tiencoc @username <số_tiền>` (Ví dụ: `!tiencoc @Luandz. 10k` hoặc `!tiencoc @Luandz. 50000`)');
+        }
+
+        // Lấy chuỗi tiền cọc từ arg thứ 2 (hoặc gộp các arg phía sau nếu có khoảng trắng)
+        let rawAmountStr = args.slice(1).join('').toLowerCase();
+        
+        // Chuyển đổi định dạng 'k' thành nghìn (ví dụ: 10k -> 10000, 50k -> 50000)
+        let multiplier = 1;
+        if (rawAmountStr.includes('k')) {
+            multiplier = 1000;
+            rawAmountStr = rawAmountStr.replace('k', '');
+        } else if (rawAmountStr.includes('m')) {
+            multiplier = 1000000;
+            rawAmountStr = rawAmountStr.replace('m', '');
+        }
+
+        const numericValue = parseFloat(rawAmountStr);
+        if (isNaN(numericValue)) {
+            return message.reply('❌ Số tiền cọc không hợp lệ! Vui lòng nhập số (Ví dụ: `10k`, `50000`, `1.5m`).');
+        }
+
+        const finalAmount = numericValue * multiplier;
+
+        // Cộng dồn tiền cọc vào hệ thống
+        userDeposits[targetUser.id] = (userDeposits[targetUser.id] || 0) + finalAmount;
+
+        const successEmbed = new EmbedBuilder()
+            .setTitle('💰 CẬP NHẬT TIỀN CỌC THÀNH CÔNG')
+            .setDescription(`Đã cộng tiền cọc cho thành viên <@${targetUser.id}>`)
+            .addFields(
+                { name: '➕ Số tiền giao dịch thêm', value: `**${args.slice(1).join(' ')}** (${finalAmount.toLocaleString('vi-VN')} VNĐ)`, inline: true },
+                { name: '💎 Tổng tiền cọc hiện tại', value: `**${userDeposits[targetUser.id].toLocaleString('vi-VN')}** VNĐ`, inline: true }
+            )
+            .setColor('#00ffcc')
+            .setTimestamp();
+
+        return message.reply({ embeds: [successEmbed] });
+    }
+
+    // --- LỆNH XEM BẢNG XẾP HẠNG CỌC: !topcoc ---
+    if (message.content === '!topcoc') {
+        if (Object.keys(userDeposits).length === 0) {
+            return message.reply('📊 Hiện tại chưa có dữ liệu tiền cọc nào trong hệ thống.');
+        }
+
+        // Sắp xếp người dùng theo số tiền cọc giảm dần
+        const sortedDeposits = Object.entries(userDeposits)
+            .sort((a, b) => b[1] - a[1]);
+
+        let description = '';
+        sortedDeposits.forEach(([userId, amount], index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `**#${index + 1}**`;
+            description += `${medal} <@${userId}> — **${amount.toLocaleString('vi-VN')}** VNĐ\n`;
+        });
+
+        const topCocEmbed = new EmbedBuilder()
+            .setTitle('🏆 BẢNG XẾP HẠNG TOP TIỀN CỌC')
+            .setDescription(description)
+            .setColor('#ffaa00')
+            .setTimestamp();
+
+        return message.reply({ embeds: [topCocEmbed] });
+    }
 
     // Lệnh báo cáo qua text: !baocao <lý do> hoặc !report <lý do>
     if (message.content.startsWith('!baocao') || message.content.startsWith('!report')) {
