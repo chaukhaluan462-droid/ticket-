@@ -206,12 +206,15 @@ client.on('messageCreate', async message => {
             avgRatingText = `${avg}/5 ⭐`;
         }
 
+        const currentDeposit = userDeposits[staffId] ? `${userDeposits[staffId].toLocaleString('vi-VN')} VNĐ` : '0 VNĐ';
+
         const statsEmbed = new EmbedBuilder()
             .setTitle(`📊 THỐNG KÊ GDTG - ${targetUser.username}`)
             .setDescription(`Thông tin hiệu suất làm việc của <@${staffId}>:`)
             .addFields(
                 { name: '🛡️ Tổng số kèo đã hoàn thành', value: `**${totalCompleted}** kèo`, inline: true },
                 { name: '⭐ Độ uy tín trung bình', value: avgRatingText, inline: true },
+                { name: '💎 Tổng tiền cọc hiện tại', value: `**${currentDeposit}**`, inline: false },
                 { name: '📝 Tổng số lượt đánh giá', value: `**${totalCount}** lượt`, inline: false }
             )
             .setColor('#00ffcc')
