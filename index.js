@@ -21,8 +21,10 @@ const client = new Client({
     ]
 });
 
+// CẤU HÌNH ID KÊNH VÀ ROLE
 const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
+const ADMIN_REPORT_CHANNEL_ID = 'ĐIỀN_ID_KÊNH_ADMIN_VÀO_ĐÂY'; // ID kênh riêng của Admin để nhận báo cáo
 
 const ticketData = {};
 const completedTickets = {}; 
@@ -35,7 +37,54 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Lệnh xem bảng xếp hạng Top Staff (Số kèo)
+    // Lệnh báo cáo qua text: !baocao <lý do> hoặc !report <lý do>
+    if (message.content.startsWith('!baocao') || message.content.startsWith('!report')) {
+        const channel = message.channel;
+        
+        // Kiểm tra xem có đang ở trong kênh ticket hợp lệ không
+        const data = ticketData[channel.id];
+        if (!data) {
+            return message.reply({ content: '❌ Lệnh này chỉ có thể sử dụng bên trong các kênh ticket giao dịch!', ephemeral: true });
+        }
+
+        if (!data.claimer || data.claimer === 'Chưa có ai nhận') {
+            return message.reply({ content: '❌ Hiện chưa có Staff nào tiếp nhận ticket này để báo cáo!', ephemeral: true });
+        }
+
+        // Lấy lý do sau lệnh (ví dụ: !baocao staff vòi vĩnh tiền)
+        const args = message.content.split(' ').slice(1).join(' ');
+        if (!args) {
+            return message.reply({ content: '❌ Vui lòng nhập lý do báo cáo cụ thể. Ví dụ: `!baocao Staff lừa đảo / treo kèo quá lâu`', ephemeral: true });
+        }
+
+        const reportedStaff = data.claimer;
+
+        try {
+            const reportChannel = await client.channels.fetch(ADMIN_REPORT_CHANNEL_ID);
+            if (reportChannel) {
+                const reportEmbed = new EmbedBuilder()
+                    .setTitle('🚨 CẢNH BÁO: CÓ BÁO CÁO TỪ KHÁCH HÀNG (QUA LỆNH)')
+                    .addFields(
+                        { name: 'Kênh Ticket', value: `<#${channel.id}> (${channel.name})`, inline: true },
+                        { name: 'Khách khiếu nại', value: `<@${message.author.id}>`, inline: true },
+                        { name: 'Staff bị tố cáo', value: reportedStaff, inline: true },
+                        { name: 'Lý do cụ thể', value: `\`\`\`${args}\`\`\``, inline: false }
+                    )
+                    .setColor('#ff0000')
+                    .setTimestamp();
+                
+                await reportChannel.send({ content: '@here Có khiếu nại khẩn cấp từ khách hàng trong ticket!', embeds: [reportEmbed] });
+            }
+        } catch (err) {
+            console.error('Lỗi khi gửi report:', err);
+        }
+
+        // Xóa tin nhắn lệnh của khách để giữ sạch ticket, thay bằng thông báo xác nhận
+        await message.delete().catch(() => {});
+        return message.channel.send({ content: `✅ <@${message.author.id}> Đã gửi báo cáo thành công đến Ban quản lý!` });
+    }
+
+    // Lệnh xem bảng xếp hạng Top Staff
     if (message.content === '!topstaff') {
         if (Object.keys(completedTickets).length === 0) {
             return message.reply('📊 Hiện tại chưa có Staff nào hoàn thành kèo GDTG nào.');
@@ -66,7 +115,7 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [topEmbed] });
     }
 
-    // Lệnh kiểm tra chỉ số của Staff bất kỳ (!stats @staff)
+    // Lệnh kiểm tra chỉ số
     if (message.content.startsWith('!stats')) {
         const targetUser = message.mentions.users.first();
         if (!targetUser) {
@@ -106,6 +155,7 @@ client.on('messageCreate', async message => {
 
 • 📌 **Mục đích:** Hỗ trợ giao dịch an toàn và nhanh chóng.
 • 📩 **Cách sử dụng:** Nhấn nút **Tạo Ticket GDTG** bên dưới để mở form nhập thông tin giao dịch.
+• 💡 *Mẹo:* Gõ lệnh \`!baocao [lý do]\` trong ticket nếu bạn cần khiếu nại thái độ hoặc sự cố về Staff.
 
 ✨ *Cam kết uy tín - Bảo mật tuyệt đối - Phản hồi nhanh chóng!*`)
             .setColor('#0099ff');
@@ -126,7 +176,7 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         
-        // 1. Mở Modal Form Nhập Thông Tin Giao Dịch Khi Bấm Tạo Ticket GDTG
+        // 1. Mở Modal Form Nhập Thông Tin Giao Dịch
         if (interaction.customId === 'create_ticket') {
             const modal = new ModalBuilder()
                 .setCustomId('modal_gdtg_form')
@@ -259,7 +309,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn thành viên:', components: [row], ephemeral: true });
         }
 
-        // 6. Đóng Ticket
+        // 6. Đóng Ticket (Gọn gàng chỉ còn 2 hàng nút)
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const closerUser = interaction.user;
@@ -291,7 +341,7 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // 7. Mở Modal Đánh Giá Sao (Chỉ người mở ticket mới bấm được)
+        // 7. Mở Modal Đánh Giá Sao (Chỉ người mở)
         if (interaction.customId.startsWith('rate_')) {
             const channel = interaction.channel;
             const user = interaction.user;
@@ -299,7 +349,6 @@ client.on('interactionCreate', async interaction => {
             let data = ticketData[channel.id];
             let openerId = data ? data.openerId : null;
 
-            // Nếu dữ liệu bị mất do bot restart, cố gắng tìm lại ID người mở ticket từ tin nhắn ghim
             if (!openerId) {
                 try {
                     const fetchedMessages = await channel.messages.fetch({ limit: 10 });
@@ -339,14 +388,8 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'select_user_to_add') {
             const targetUser = interaction.users.first();
             const channel = interaction.channel;
-
             try {
-                await channel.permissionOverwrites.create(targetUser.id, {
-                    ViewChannel: true,
-                    SendMessages: true,
-                    ReadMessageHistory: true
-                });
-
+                await channel.permissionOverwrites.create(targetUser.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
                 await interaction.update({ content: `✅ Đã thêm **${targetUser.tag}** vào ticket!`, components: [] });
                 await channel.send(`✅ **${interaction.user}** đã thêm thành viên ${targetUser} vào ticket.`);
             } catch (error) {
@@ -359,38 +402,22 @@ client.on('interactionCreate', async interaction => {
             const targetStaff = interaction.users.first();
             const channel = interaction.channel;
             const currentStaff = interaction.user;
-
-            if (targetStaff.id === currentStaff.id) {
-                return interaction.update({ content: '❌ Bạn không thể tự chuyển vé lại cho chính mình!', components: [] });
-            }
-
-            if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
-            }
+            if (targetStaff.id === currentStaff.id) return interaction.update({ content: '❌ Bạn không thể tự chuyển vé lại cho chính mình!', components: [] });
+            if (!ticketData[channel.id]) { ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' }; }
             ticketData[channel.id].claimer = `<@${targetStaff.id}>`;
-
             try {
-                await channel.permissionOverwrites.create(targetStaff.id, {
-                    ViewChannel: true,
-                    SendMessages: true,
-                    ReadMessageHistory: true
-                });
-
+                await channel.permissionOverwrites.create(targetStaff.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
                 const messages = await channel.messages.fetch({ limit: 10 });
                 const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
-
                 if (welcomeMessage) {
                     const oldEmbed = welcomeMessage.embeds[0];
                     const fields = oldEmbed.fields.map(f => {
-                        if (f.name === '📌 Trạng thái') {
-                            return { name: '📌 Trạng thái', value: `\`\`\`ini\n[ Đã chuyển giao cho ${targetStaff.tag} ]\n\`\`\``, inline: false };
-                        }
+                        if (f.name === '📌 Trạng thái') return { name: '📌 Trạng thái', value: `\`\`\`ini\n[ Đã chuyển giao cho ${targetStaff.tag} ]\n\`\`\``, inline: false };
                         return f;
                     });
                     const updatedEmbed = EmbedBuilder.from(oldEmbed).setFields(fields);
                     await welcomeMessage.edit({ embeds: [updatedEmbed] });
                 }
-
                 await interaction.update({ content: `✅ Đã chuyển nhượng ticket thành công cho **${targetStaff.tag}**!`, components: [] });
                 await channel.send(`🔄 **${currentStaff}** đã chuyển nhượng ticket này cho ${targetStaff}. Nhờ bạn tiếp tục hỗ trợ khách hàng nhé!`);
             } catch (error) {
@@ -400,10 +427,10 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Xử lý Submit Modal (Bao gồm Modal Form GDTG và Modal Đánh Giá)
+    // Xử lý Submit Modal (Tạo Ticket & Đánh giá)
     if (interaction.isModalSubmit()) {
         
-        // A. Xử lý khi khách điền xong Form Thông Tin Giao Dịch
+        // A. KHI KHÁCH TẠO TICKET GDTG
         if (interaction.customId === 'modal_gdtg_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -444,15 +471,16 @@ client.on('interactionCreate', async interaction => {
 
             const welcomeEmbed = new EmbedBuilder()
                 .setTitle('🎫 THÔNG TIN GIAO DỊCH TRUNG GIAN')
-                .setDescription(`Chào mừng <@${user.id}> đã tạo ticket! Dưới đây là thông tin chi tiết về kèo giao dịch:`)
+                .setDescription(`Chào mừng <@${user.id}> đã tạo ticket! Dưới đây là thông tin chi tiết về kèo giao dịch:\n\n💡 *Gợi ý: Nếu Staff có hành vi vòi vĩnh hoặc chậm trễ, bạn có thể gõ lệnh \`!baocao [lý do]\` ngay tại đây để báo cho Admin.*`)
                 .addFields(
                     { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
                     { name: '📋 Chi tiết giao dịch', value: dealInfoText, inline: false },
-                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sử.', inline: false }
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
                 )
                 .setColor('#00ffcc')
                 .setTimestamp();
 
+            // Panel rút gọn còn 2 dòng, mỗi dòng 3 nút rất gọn gàng
             const actionRow1 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
@@ -470,7 +498,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
         }
 
-        // B. Xử lý khi khách gửi đánh giá sao
+        // B. KHI KHÁCH ĐÁNH GIÁ SAO
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = Number(interaction.customId.split('_')[2]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
@@ -487,12 +515,10 @@ client.on('interactionCreate', async interaction => {
                     const pinnedMsg = fetchedMessages.find(m => m.pinned);
                     if (pinnedMsg) {
                         const match = pinnedMsg.content.match(/<@!?(\d+)>/);
-                        if (match) {
-                            openerText = `<@${match[1]}>`;
-                        }
+                        if (match) openerText = `<@${match[1]}>`;
                     }
                 } catch (e) {
-                    console.error('Không thể quét tin nhắn ghim:', e);
+                    console.error(e);
                 }
 
                 data = {
