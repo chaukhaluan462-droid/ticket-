@@ -164,14 +164,14 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
+                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
 
             if (ticketData[channel.id].claimer !== 'Chưa có ai nhận') {
                 return interaction.reply({ content: `❌ Ticket này đã được tiếp nhận bởi **${ticketData[channel.id].claimer}**!`, ephemeral: true });
             }
 
-            ticketData[channel.id].claimer = `${staff.tag} (<@${staff.id}>)`;
+            ticketData[channel.id].claimer = `<@${staff.id}>`;
 
             const messages = await channel.messages.fetch({ limit: 10 });
             const welcomeMessage = messages.find(m => m.embeds.length > 0 && m.components.length > 0);
@@ -197,7 +197,7 @@ client.on('interactionCreate', async interaction => {
             const staff = interaction.user;
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
+                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
 
             if (ticketData[channel.id].claimer === 'Chưa có ai nhận') {
@@ -269,15 +269,15 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Không có thông tin' };
+                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Không có thông tin' };
             }
-            ticketData[channel.id].closer = `${closerUser.tag} (<@${closerUser.id}>)`;
+            ticketData[channel.id].closer = `<@${closerUser.id}>`;
 
             await interaction.reply({ content: '🔒 Đang chuẩn bị bảng đánh giá...', ephemeral: true });
 
             const ratingEmbed = new EmbedBuilder()
                 .setTitle('⭐ Đánh Giá Chất Lượng Giao Dịch')
-                .setDescription('Vui lòng đánh giá trải nghiệm giao dịch bằng cách chọn số sao bên dưới:')
+                .setDescription('Vui lòng đánh giá trải nghiệm giao dịch bằng cách chọn số sao bên dưới *(Chỉ người mở ticket mới có quyền đánh giá)*:')
                 .setColor('#ffcc00');
 
             const ratingRow = new ActionRowBuilder().addComponents(
@@ -291,8 +291,32 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // 7. Mở Modal Đánh Giá Sao
+        // 7. Mở Modal Đánh Giá Sao (Chỉ người mở ticket mới bấm được)
         if (interaction.customId.startsWith('rate_')) {
+            const channel = interaction.channel;
+            const user = interaction.user;
+
+            let data = ticketData[channel.id];
+            let openerId = data ? data.openerId : null;
+
+            // Nếu dữ liệu bị mất do bot restart, cố gắng tìm lại ID người mở ticket từ tin nhắn ghim
+            if (!openerId) {
+                try {
+                    const fetchedMessages = await channel.messages.fetch({ limit: 10 });
+                    const pinnedMsg = fetchedMessages.find(m => m.pinned);
+                    if (pinnedMsg) {
+                        const match = pinnedMsg.content.match(/<@!?(\d+)>/);
+                        if (match) openerId = match[1];
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            if (openerId && user.id !== openerId) {
+                return interaction.reply({ content: '❌ Chỉ có **người mở ticket** mới có quyền đánh giá chất lượng giao dịch này!', ephemeral: true });
+            }
+
             const stars = interaction.customId.split('_')[1];
             const modal = new ModalBuilder()
                 .setCustomId(`modal_review_${stars}`)
@@ -341,9 +365,9 @@ client.on('interactionCreate', async interaction => {
             }
 
             if (!ticketData[channel.id]) {
-                ticketData[channel.id] = { opener: 'Không rõ', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
+                ticketData[channel.id] = { openerId: '', claimer: 'Chưa có ai nhận', closer: 'Chưa xác định', reviewer: 'Chưa đánh giá', dealInfo: 'Chưa cập nhật' };
             }
-            ticketData[channel.id].claimer = `${targetStaff.tag} (<@${targetStaff.id}>)`;
+            ticketData[channel.id].claimer = `<@${targetStaff.id}>`;
 
             try {
                 await channel.permissionOverwrites.create(targetStaff.id, {
@@ -410,7 +434,8 @@ client.on('interactionCreate', async interaction => {
             const dealInfoText = `• **Tên người cần giao dịch:** ${dealPerson}\n• **Đồ cần giao dịch:** ${dealItem}`;
 
             ticketData[channel.id] = {
-                opener: `${user.tag} (<@${user.id}>)`,
+                openerId: user.id,
+                opener: `<@${user.id}>`,
                 claimer: 'Chưa có ai nhận',
                 closer: 'Chưa xác định',
                 reviewer: 'Chưa đánh giá',
@@ -423,7 +448,7 @@ client.on('interactionCreate', async interaction => {
                 .addFields(
                     { name: '📌 Trạng thái', value: '```ini\n[ Đang chờ Staff tiếp nhận ]\n```', inline: false },
                     { name: '📋 Chi tiết giao dịch', value: dealInfoText, inline: false },
-                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sự.', inline: false }
+                    { name: '⚠️ Lưu ý quan trọng', value: '• Không chia sẻ mật khẩu hoặc thông tin nhạy cảm.\n• Giữ thái độ văn minh, lịch sử.', inline: false }
                 )
                 .setColor('#00ffcc')
                 .setTimestamp();
@@ -464,34 +489,26 @@ client.on('interactionCreate', async interaction => {
                         const match = pinnedMsg.content.match(/<@!?(\d+)>/);
                         if (match) {
                             openerText = `<@${match[1]}>`;
-                        } else if (pinnedMsg.author) {
-                            openerText = `${pinnedMsg.author.tag} (<@${pinnedMsg.author.id}>)`;
                         }
                     }
                 } catch (e) {
                     console.error('Không thể quét tin nhắn ghim:', e);
                 }
 
-                if (openerText === 'Không rõ') {
-                    const usernamePart = channel.name.replace('ticket-', '');
-                    openerText = usernamePart;
-                }
-
                 data = {
                     opener: openerText,
                     claimer: claimerText,
-                    closer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`,
-                    reviewer: `${reviewerUser.tag} (<@${reviewerUser.id}>)`,
+                    closer: `<@${reviewerUser.id}>`,
+                    reviewer: `<@${reviewerUser.id}>`,
                     dealInfo: 'Không có thông tin'
                 };
             } else {
                 if (!data.opener || data.opener === 'Không rõ') {
-                    const usernamePart = channel.name.replace('ticket-', '');
-                    data.opener = usernamePart;
+                    data.opener = `<@${data.openerId}>`;
                 }
-                data.reviewer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`;
+                data.reviewer = `<@${reviewerUser.id}>`;
                 if (!data.closer || data.closer === 'Chưa xác định') {
-                    data.closer = `${reviewerUser.tag} (<@${reviewerUser.id}>)`;
+                    data.closer = `<@${reviewerUser.id}>`;
                 }
             }
 
