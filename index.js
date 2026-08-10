@@ -24,7 +24,7 @@ const client = new Client({
 // CẤU HÌNH ID KÊNH VÀ ROLE
 const LOG_CHANNEL_ID = '1527985466777927800';
 const GDTG_ROLE_ID = '1527975554115178506';
-const ADMIN_REPORT_CHANNEL_ID = 'ĐIỀN_ID_KÊNH_ADMIN_VÀO_ĐÂY'; // ID kênh riêng của Admin để nhận báo cáo
+const ADMIN_REPORT_CHANNEL_ID = '1536207079008899153'; // ID kênh riêng của Admin để nhận báo cáo
 
 const ticketData = {};
 const completedTickets = {}; 
@@ -41,7 +41,6 @@ client.on('messageCreate', async message => {
     if (message.content.startsWith('!baocao') || message.content.startsWith('!report')) {
         const channel = message.channel;
         
-        // Kiểm tra xem có đang ở trong kênh ticket hợp lệ không
         const data = ticketData[channel.id];
         if (!data) {
             return message.reply({ content: '❌ Lệnh này chỉ có thể sử dụng bên trong các kênh ticket giao dịch!', ephemeral: true });
@@ -51,7 +50,6 @@ client.on('messageCreate', async message => {
             return message.reply({ content: '❌ Hiện chưa có Staff nào tiếp nhận ticket này để báo cáo!', ephemeral: true });
         }
 
-        // Lấy lý do sau lệnh (ví dụ: !baocao staff vòi vĩnh tiền)
         const args = message.content.split(' ').slice(1).join(' ');
         if (!args) {
             return message.reply({ content: '❌ Vui lòng nhập lý do báo cáo cụ thể. Ví dụ: `!baocao Staff lừa đảo / treo kèo quá lâu`', ephemeral: true });
@@ -60,7 +58,7 @@ client.on('messageCreate', async message => {
         const reportedStaff = data.claimer;
 
         try {
-            const reportChannel = await client.channels.fetch(1536207079008899153);
+            const reportChannel = await client.channels.fetch(ADMIN_REPORT_CHANNEL_ID);
             if (reportChannel) {
                 const reportEmbed = new EmbedBuilder()
                     .setTitle('🚨 CẢNH BÁO: CÓ BÁO CÁO TỪ KHÁCH HÀNG (QUA LỆNH)')
@@ -79,7 +77,6 @@ client.on('messageCreate', async message => {
             console.error('Lỗi khi gửi report:', err);
         }
 
-        // Xóa tin nhắn lệnh của khách để giữ sạch ticket, thay bằng thông báo xác nhận
         await message.delete().catch(() => {});
         return message.channel.send({ content: `✅ <@${message.author.id}> Đã gửi báo cáo thành công đến Ban quản lý!` });
     }
@@ -297,8 +294,16 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn đồng nghiệp bạn muốn chuyển giao vé:', components: [row], ephemeral: true });
         }
 
-        // 5. Thêm Người
+        // 5. Thêm Người (ĐÃ KIỂM TRA QUYỀN STAFF)
         if (interaction.customId === 'add_user_btn') {
+            const member = interaction.member;
+            
+            // Kiểm tra xem người bấm có Role Staff hoặc có quyền Quản trị viên không
+            const isStaff = member.roles.cache.has("1527975554115178506") || member.permissions.has(PermissionsBitField.Flags.Administrator);
+            if (!isStaff) {
+                return interaction.reply({ content: '❌ Chỉ có **Staff** mới có quyền thêm người vào ticket này!', ephemeral: true });
+            }
+
             const selectMenu = new UserSelectMenuBuilder()
                 .setCustomId('select_user_to_add')
                 .setPlaceholder('Chọn thành viên bạn muốn thêm vào...')
@@ -309,7 +314,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn thành viên:', components: [row], ephemeral: true });
         }
 
-        // 6. Đóng Ticket (Gọn gàng chỉ còn 2 hàng nút)
+        // 6. Đóng Ticket
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const closerUser = interaction.user;
@@ -480,7 +485,6 @@ client.on('interactionCreate', async interaction => {
                 .setColor('#00ffcc')
                 .setTimestamp();
 
-            // Panel rút gọn còn 2 dòng, mỗi dòng 3 nút rất gọn gàng
             const actionRow1 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
