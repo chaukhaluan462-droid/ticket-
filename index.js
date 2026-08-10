@@ -60,7 +60,7 @@ client.on('messageCreate', async message => {
         const reportedStaff = data.claimer;
 
         try {
-            const reportChannel = await client.channels.fetch(ADMIN_REPORT_CHANNEL_ID);
+            const reportChannel = await client.channels.fetch(1536207079008899153);
             if (reportChannel) {
                 const reportEmbed = new EmbedBuilder()
                     .setTitle('🚨 CẢNH BÁO: CÓ BÁO CÁO TỪ KHÁCH HÀNG (QUA LỆNH)')
