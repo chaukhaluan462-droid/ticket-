@@ -418,35 +418,11 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ embeds: [optionsEmbed], components: [optionsRow], ephemeral: true });
         }
 
-        // 6.1. Đóng ngay lập tức (không qua bảng đánh giá)
+        // 6.1. Đóng ngay lập tức (không qua bảng đánh giá) -> Đã loại bỏ gửi log
         if (interaction.customId === 'close_instant') {
             const channel = interaction.channel;
-            const closerUser = interaction.user;
 
             await interaction.update({ content: '🚪 Đã chọn đóng ngay. Kênh sẽ bị xóa sau 3 giây...', embeds: [], components: [] });
-
-            // Lưu log cơ bản nếu cần
-            try {
-                const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
-                if (logChannel) {
-                    const data = ticketData[channel.id] || {};
-                    const logEmbed = new EmbedBuilder()
-                        .setTitle('📊 Nhật Ký Giao Dịch (Đóng Không Đánh Giá)')
-                        .addFields(
-                            { name: '👤 Người mở ticket', value: data.opener || 'Không rõ', inline: true },
-                            { name: '🙋‍♂️ Người nhận ticket', value: data.claimer || 'Chưa có', inline: true },
-                            { name: '📋 Thông tin giao dịch', value: data.dealInfo || 'Không có thông tin', inline: false },
-                            { name: '🔒 Người đóng ticket', value: `<@${closerUser.id}>`, inline: true },
-                            { name: '⭐ Đánh giá', value: 'Bỏ qua / Không đánh giá', inline: true }
-                        )
-                        .setColor('#ff5555')
-                        .setTimestamp();
-
-                    await logChannel.send({ embeds: [logEmbed] });
-                }
-            } catch (err) {
-                console.error('Lỗi gửi log:', err);
-            }
 
             delete ticketData[channel.id];
             setTimeout(async () => {
@@ -643,7 +619,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Ticket của bạn đã được tạo tại: ${channel}` });
         }
 
-        // B. KHI KHÁCH ĐÁNH GIÁ SAO
+        // B. KHI KHÁCH ĐÁNH GIÁ SAO (Vẫn giữ nguyên log khi có đánh giá)
         if (interaction.customId.startsWith('modal_review_')) {
             const stars = Number(interaction.customId.split('_')[2]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
