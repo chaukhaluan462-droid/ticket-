@@ -390,7 +390,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: '👇 Hãy chọn thành viên:', components: [row], ephemeral: true });
         }
 
-        // 6. Đóng Ticket
+        // 6. Đóng Ticket -> Hiển thị bảng chọn ẩn (Ephemeral) cho riêng người bấm
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const closerUser = interaction.user;
@@ -404,7 +404,64 @@ client.on('interactionCreate', async interaction => {
             }
             ticketData[channel.id].closer = `<@${closerUser.id}>`;
 
-            await interaction.reply({ content: '🔒 Đang chuẩn bị bảng đánh giá...', ephemeral: true });
+            const optionsEmbed = new EmbedBuilder()
+                .setTitle('🔒 TÙY CHỌN ĐÓNG TICKET')
+                .setDescription('Bạn có muốn đánh giá dịch vụ trước khi đóng ticket này không?')
+                .setColor('#ffaa00');
+
+            const optionsRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('close_instant').setLabel('Đóng Ngay (Không Đánh Giá)').setStyle(ButtonStyle.Danger).setEmoji('🚪'),
+                new ButtonBuilder().setCustomId('open_rating_panel').setLabel('Đánh Giá Dịch Vụ').setStyle(ButtonStyle.Success).setEmoji('⭐')
+            );
+
+            // Gửi thông báo ẩn (chỉ người bấm lệnh thấy)
+            return interaction.reply({ embeds: [optionsEmbed], components: [optionsRow], ephemeral: true });
+        }
+
+        // 6.1. Đóng ngay lập tức (không qua bảng đánh giá)
+        if (interaction.customId === 'close_instant') {
+            const channel = interaction.channel;
+            const closerUser = interaction.user;
+
+            await interaction.update({ content: '🚪 Đã chọn đóng ngay. Kênh sẽ bị xóa sau 3 giây...', embeds: [], components: [] });
+
+            // Lưu log cơ bản nếu cần
+            try {
+                const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
+                if (logChannel) {
+                    const data = ticketData[channel.id] || {};
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle('📊 Nhật Ký Giao Dịch (Đóng Không Đánh Giá)')
+                        .addFields(
+                            { name: '👤 Người mở ticket', value: data.opener || 'Không rõ', inline: true },
+                            { name: '🙋‍♂️ Người nhận ticket', value: data.claimer || 'Chưa có', inline: true },
+                            { name: '📋 Thông tin giao dịch', value: data.dealInfo || 'Không có thông tin', inline: false },
+                            { name: '🔒 Người đóng ticket', value: `<@${closerUser.id}>`, inline: true },
+                            { name: '⭐ Đánh giá', value: 'Bỏ qua / Không đánh giá', inline: true }
+                        )
+                        .setColor('#ff5555')
+                        .setTimestamp();
+
+                    await logChannel.send({ embeds: [logEmbed] });
+                }
+            } catch (err) {
+                console.error('Lỗi gửi log:', err);
+            }
+
+            delete ticketData[channel.id];
+            setTimeout(async () => {
+                try {
+                    await channel.delete();
+                } catch (error) {
+                    console.log('Kênh đã được xóa.');
+                }
+            }, 3000);
+        }
+
+        // 6.2. Bấm nút chọn đánh giá -> hiện bảng sao công khai trong kênh (như ảnh cũ của bạn)
+        if (interaction.customId === 'open_rating_panel') {
+            const channel = interaction.channel;
+            await interaction.update({ content: '✅ Đã mở bảng đánh giá dịch vụ!', embeds: [], components: [] });
 
             const ratingEmbed = new EmbedBuilder()
                 .setTitle('⭐ Đánh Giá Chất Lượng Giao Dịch')
