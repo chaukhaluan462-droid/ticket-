@@ -1,4 +1,4 @@
-const {}
+const { 
     Client, 
     GatewayIntentBits, 
     ActionRowBuilder, 
@@ -10,14 +10,14 @@ const {}
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle
-const { Client, GatewayIntentBits } = require('discord.js');
+} = require('discord.js');
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers // <--- Thêm dòng này vào đây
+        GatewayIntentBits.GuildMembers // Bật quyền này để hiển thị danh sách thành viên khi dùng lệnh /add
     ]
 });
 
@@ -177,7 +177,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // 4. Nhân viên bấm Claim Ticket (Đã được chặn quyền, người mở ticket không bấm được)
+        // 4. Nhân viên bấm Claim Ticket
         if (interaction.customId === 'claim_ticket') {
             const member = interaction.member;
             const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
@@ -204,7 +204,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [claimEmbed], ephemeral: false });
         }
 
-        // 5. Yêu cầu Đóng Ticket -> Hiển thị tùy chọn Đánh giá hoặc Đóng ngay
+        // 5. Yêu cầu Đóng Ticket
         if (interaction.customId === 'close_ticket') {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { type: 'gdtg' };
@@ -221,7 +221,7 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ embeds: [optionsEmbed], components: [optionsRow], ephemeral: true });
         }
 
-        // 6. Đóng ngay lập tức (Không cần đánh giá)
+        // 6. Đóng ngay lập tức
         if (interaction.customId === 'close_instant') {
             const channel = interaction.channel;
             await interaction.update({ content: '🚪 Kênh ticket đã được đóng theo yêu cầu.', embeds: [], components: [] });
@@ -229,7 +229,7 @@ client.on('interactionCreate', async interaction => {
             setTimeout(() => channel.delete().catch(() => {}), 3000);
         }
 
-        // 7. Mở bảng đánh giá sao cho dịch vụ GDTG
+        // 7. Mở bảng đánh giá sao cho GDTG
         if (interaction.customId === 'open_rating_panel') {
             const channel = interaction.channel;
             await interaction.update({ content: '✅ Mở bảng đánh giá chất lượng GDTG:', embeds: [], components: [] });
@@ -295,7 +295,7 @@ client.on('interactionCreate', async interaction => {
     // --- XỬ LÝ SUBMIT TOÀN BỘ CÁC MODAL ---
     if (interaction.isModalSubmit()) {
         
-        // 1. Submit Ticket GDTG (Ping: Người mở + Owner + Nhân viên GDTG + Manager)
+        // 1. Submit Ticket GDTG
         if (interaction.customId === 'modal_gdtg_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -346,7 +346,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket GDTG tại kênh: ${channel}` });
         }
 
-        // 2. Submit Ticket Mua Hàng (Ping: Người mở + Seller + Owner + Manager)
+        // 2. Submit Ticket Mua Hàng
         if (interaction.customId === 'modal_buy_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -397,7 +397,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket Mua Hàng tại kênh: ${channel}` });
         }
 
-        // 3. Submit Report Scammer (Ping: Người mở + Owner + Manager -> Báo cáo về kênh log Owner)
+        // 3. Submit Report Scammer
         if (interaction.customId === 'modal_report_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -450,7 +450,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Đã tiếp nhận khiếu nại và chuyển báo cáo về hệ thống quản lý tại kênh: ${channel}` });
         }
 
-        // 4. Submit Đánh Giá GDTG -> Đẩy Vouch Log vào VOUCH_LOG_CHANNEL_ID
+        // 4. Submit Đánh Giá GDTG
         if (interaction.customId.startsWith('modal_review_gdtg_')) {
             const stars = Number(interaction.customId.split('_')[3]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
@@ -500,7 +500,7 @@ client.on('interactionCreate', async interaction => {
             setTimeout(() => channel.delete().catch(() => {}), 3000);
         }
 
-        // 5. Submit Đánh Giá Mua Hàng -> Đẩy Vouch Log vào VOUCH_LOG_CHANNEL_ID
+        // 5. Submit Đánh Giá Mua Hàng
         if (interaction.customId.startsWith('modal_review_buy_')) {
             const stars = Number(interaction.customId.split('_')[3]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
