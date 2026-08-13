@@ -147,7 +147,7 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.on('interactionCreate', async interaction => {}
+client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
         
         if (interaction.customId === 'create_gdtg_ticket') {
@@ -176,14 +176,13 @@ client.on('interactionCreate', async interaction => {}
             await interaction.showModal(modal);
         }
 
-      if (interaction.customId === 'create_report_ticket') {
+        if (interaction.customId === 'create_report_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_report_form').setTitle('🚨 REPORT SCAMMER');
             modal.addComponents(
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder().setCustomId('scammer_name').setLabel('Tên hoặc ID đối tượng bị tố cáo').setStyle(TextInputStyle.Short).setPlaceholder('Nhập tên/link/ID Discord kẻ lừa đảo...').setRequired(true)
                 ),
                 new ActionRowBuilder().addComponents(
-                    // Sửa dòng placeholder ở đây để hướng dẫn người dùng nhập mô tả chữ trước
                     new TextInputBuilder().setCustomId('scammer_proof').setLabel('Mô tả chi tiết sự việc').setStyle(TextInputStyle.Paragraph).setPlaceholder('Mô tả sự việc. Bạn có thể gửi ảnh/video trực tiếp vào kênh ticket sau khi tạo!').setRequired(true)
                 )
             );
@@ -334,7 +333,8 @@ client.on('interactionCreate', async interaction => {}
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
             
-            if (interaction.user.id !== data.openerId && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
+            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền thực hiện hành động này!', ephemeral: true });
             }
 
@@ -347,7 +347,8 @@ client.on('interactionCreate', async interaction => {}
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
 
-            if (interaction.user.id !== data.openerId) {
+            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
+            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá dịch vụ!', ephemeral: true });
             }
 
@@ -371,7 +372,8 @@ client.on('interactionCreate', async interaction => {}
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
 
-            if (interaction.user.id !== data.openerId) {
+            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
+            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá sản phẩm!', ephemeral: true });
             }
 
@@ -395,7 +397,6 @@ client.on('interactionCreate', async interaction => {}
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
             
-            // Nếu mất dữ liệu tạm, cho phép qua hoặc kiểm tra quyền Admin
             const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
             if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
@@ -429,6 +430,7 @@ client.on('interactionCreate', async interaction => {}
             );
             await interaction.showModal(modal);
         }
+    }
 
     if (interaction.isModalSubmit()) {
 
@@ -730,5 +732,4 @@ client.on('interactionCreate', async interaction => {}
         }
     }
 });
-
 client.login(process.env.DISCORD_TOKEN);
