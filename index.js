@@ -206,11 +206,54 @@ client.on('interactionCreate', async interaction => {
             // Gán nhân viên vào danh sách (chỉ chứa duy nhất 1 người)
             ticketData[channel.id].claimers = [staff.id];
 
-            const claimEmbed = new EmbedBuilder(listEdit => {})
+            const claimEmbed = new EmbedBuilder()
                 .setDescription(`✅ Nhân viên/Seller **${staff.tag}** đã chính thức tiếp nhận ticket này!`)
                 .setColor('#2ecc71');
 
             return interaction.reply({ embeds: [claimEmbed], ephemeral: false });
+        }
+
+        // 4.1. Hủy nhận ticket (Unclaim)
+        if (interaction.customId === 'unclaim_ticket') {
+            const channel = interaction.channel;
+            const staff = interaction.user;
+
+            if (!ticketData[channel.id] || !ticketData[channel.id].claimers || !ticketData[channel.id].claimers.includes(staff.id)) {
+                return interaction.reply({ content: '❌ Bạn chưa nhận ticket này nên không thể hủy nhận!', ephemeral: true });
+            }
+
+            // Xóa nhân viên ra khỏi danh sách claim
+            ticketData[channel.id].claimers = ticketData[channel.id].claimers.filter(id => id !== staff.id);
+
+            const unclaimEmbed = new EmbedBuilder()
+                .setDescription(`🔄 Nhân viên **${staff.tag}** đã hủy tiếp nhận ticket này.`)
+                .setColor('#f39c12');
+
+            return interaction.reply({ embeds: [unclaimEmbed], ephemeral: false });
+        }
+
+        // 4.2. Chuyển ticket cho nhân viên khác bằng Modal
+        if (interaction.customId === 'transfer_ticket') {
+            const channel = interaction.channel;
+            const staff = interaction.user;
+
+            if (!ticketData[channel.id] || !ticketData[channel.id].claimers || !ticketData[channel.id].claimers.includes(staff.id)) {
+                return interaction.reply({ content: '❌ Bạn phải là người đang nhận ticket này mới có thể chuyển cho người khác!', ephemeral: true });
+            }
+
+            const modal = new ModalBuilder()
+                .setCustomId('submit_transfer_ticket')
+                .setTitle('Chuyển Ticket Cho Nhân Viên Khác');
+
+            const transferInput = new TextInputBuilder()
+                .setCustomId('new_staff_id')
+                .setLabel("Nhập ID hoặc Tag nhân viên nhận thay")
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Nhập ID Discord của nhân viên mới...')
+                .setRequired(true);
+
+            modal.addComponents(new ActionRowBuilder().addComponents(transferInput));
+            return await interaction.showModal(modal);
         }
 
         // 5. Mở Modal Thêm Người Vào Ticket
@@ -343,16 +386,24 @@ client.on('interactionCreate', async interaction => {
     // --- XỬ LÝ SUBMIT TOÀN BỘ CÁC MODAL ---
     if (interaction.isModalSubmit()) {
 
-        // Xử lý submit thêm người vào ticket qua Modal
+        // Xử lý submit thêm người vào ticket qua Modal (Đã tối ưu tìm kiếm theo ID hoặc Tên)
         if (interaction.customId === 'submit_add_member') {
-            const inputVal = interaction.fields.getTextInputValue('target_user_id').replace(/[<@!>]/g, '');
+            let rawInput = interaction.fields.getTextInputValue('target_user_id').trim();
+            const targetId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
             const channel = interaction.channel;
 
             try {
-                const targetMember = await interaction.guild.members.fetch(inputVal).catch(() => null);
+                let targetMember = null;
+                if (targetId.length >= 17) {
+                    targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
+                }
+                if (!targetMember) {
+                    const fetchedMembers = await interaction.guild.members.fetch({ query: rawInput, limit: 1 });
+                    targetMember = fetchedMembers.first();
+                }
                 
                 if (!targetMember) {
-                    return interaction.reply({ content: '❌ Không tìm thấy thành viên này trong Server!', ephemeral: true });
+                    return interaction.reply({ content: `❌ Không tìm thấy thành viên **"${rawInput}"** trong Server! Vui lòng thử dùng ID chính xác.`, ephemeral: true });
                 }
 
                 await channel.permissionOverwrites.create(targetMember, {
@@ -364,8 +415,31 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: `✅ Đã thêm thành công ${targetMember} vào ticket này!`, ephemeral: false });
             } catch (err) {
                 console.error(err);
-                return interaction.reply({ content: '❌ Có lỗi xảy ra, vui lòng kiểm tra lại ID!', ephemeral: true });
+                return interaction.reply({ content: '❌ Có lỗi xảy ra khi tìm thành viên, vui lòng kiểm tra lại thông tin!', ephemeral: true });
             }
+        }
+
+        // Xử lý submit chuyển ticket cho nhân viên khác
+        if (interaction.customId === 'submit_transfer_ticket') {
+            let rawInput = interaction.fields.getTextInputValue('new_staff_id').trim();
+            const newStaffId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
+            const channel = interaction.channel;
+
+            const newStaffMember = await interaction.guild.members.fetch(newStaffId).catch(() => null);
+            if (!newStaffMember) {
+                return interaction.reply({ content: '❌ Không tìm thấy nhân viên này trong server!', ephemeral: true });
+            }
+
+            if (!ticketData[channel.id]) ticketData[channel.id] = { claimers: [] };
+            
+            // Thay thế người nhận cũ bằng người nhận mới
+            ticketData[channel.id].claimers = [newStaffMember.id];
+
+            const transferEmbed = new EmbedBuilder()
+                .setDescription(`➡️ Ticket đã được chuyển giao cho nhân viên mới: ${newStaffMember}`)
+                .setColor('#3498db');
+
+            return interaction.reply({ embeds: [transferEmbed], ephemeral: false });
         }
         
         // 1. Submit Ticket GDTG
@@ -405,7 +479,6 @@ client.on('interactionCreate', async interaction => {
                 .setColor('#00ffcc')
                 .setTimestamp();
 
-            // Cấu trúc 2 hàng nút giống ảnh mẫu của bạn
             const row1 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
                 new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy Nhận').setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
