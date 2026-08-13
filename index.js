@@ -10,13 +10,14 @@ const {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle
-} = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers // <--- Thêm dòng này vào đây
     ]
 });
 
