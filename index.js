@@ -204,8 +204,21 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [claimEmbed], ephemeral: false });
         }
 
-        // 5. Yêu cầu Đóng Ticket
+        // 5. Yêu cầu Đóng Ticket -> Kiểm tra quyền Staff/Seller/Owner/Manager trước
         if (interaction.customId === 'close_ticket') {
+            const member = interaction.member;
+            
+            // Kiểm tra xem người bấm có phải là Staff, Seller, Owner, Manager hoặc Admin không
+            const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
+                            member.roles.cache.has(OWNER_ROLE_ID) || 
+                            member.roles.cache.has(MANAGER_ROLE_ID) || 
+                            member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+            // Nếu không phải nhân viên/quản lý thì chặn lại, khách hàng thường không bấm được
+            if (!isStaff) {
+                return interaction.reply({ content: '❌ Chỉ có Nhân viên GDTG, Seller hoặc Quản trị viên mới có quyền đóng ticket này!', ephemeral: true });
+            }
+
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { type: 'gdtg' };
 
