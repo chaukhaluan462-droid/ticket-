@@ -176,8 +176,19 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // 4. Nhân viên bấm Claim Ticket
+        // 4. Nhân viên bấm Claim Ticket (Đã được chặn quyền, người mở ticket không bấm được)
         if (interaction.customId === 'claim_ticket') {
+            const member = interaction.member;
+            const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
+                            member.roles.cache.has(SELLER_ROLE_ID) || 
+                            member.roles.cache.has(OWNER_ROLE_ID) || 
+                            member.roles.cache.has(MANAGER_ROLE_ID) || 
+                            member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+            if (!isStaff) {
+                return interaction.reply({ content: '❌ Chỉ có Nhân viên GDTG, Seller hoặc Quản trị viên mới có thể nhận ticket này!', ephemeral: true });
+            }
+
             const channel = interaction.channel;
             const staff = interaction.user;
             if (!ticketData[channel.id]) {
