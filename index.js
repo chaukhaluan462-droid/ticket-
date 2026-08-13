@@ -279,7 +279,7 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('new_staff_id')
                 .setLabel("Nhập ID hoặc Tag nhân viên nhận thay")
                 .setStyle(TextInputStyle.Short)
-                .setPlaceholder('Nhập ID Discord của nhân viên mới...')
+                .setPlaceholder('Nhập ID hoặc tag tên nhân viên mới...')
                 .setRequired(true);
 
             modal.addComponents(new ActionRowBuilder().addComponents(transferInput));
@@ -449,15 +449,27 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // Xử lý chuyển ticket cho nhân viên khác
+        // Xử lý chuyển ticket cho nhân viên khác (ĐÃ SỬA HỖ TRỢ TÌM KIẾM LINH HOẠT)
         if (interaction.customId === 'submit_transfer_ticket') {
             let rawInput = interaction.fields.getTextInputValue('new_staff_id').trim();
-            const newStaffId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
+            const targetId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
             const channel = interaction.channel;
 
-            const newStaffMember = await interaction.guild.members.fetch(newStaffId).catch(() => null);
+            let newStaffMember = null;
+            try {
+                if (targetId.length >= 17) {
+                    newStaffMember = await interaction.guild.members.fetch(targetId).catch(() => null);
+                }
+                if (!newStaffMember) {
+                    const fetchedMembers = await interaction.guild.members.fetch({ query: rawInput, limit: 1 });
+                    newStaffMember = fetchedMembers.first();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
             if (!newStaffMember) {
-                return interaction.reply({ content: '❌ Không tìm thấy nhân viên này trong server!', ephemeral: true });
+                return interaction.reply({ content: `❌ Không tìm thấy nhân viên **"${rawInput}"** trong server! Vui lòng nhập đúng ID hoặc tag tên.`, ephemeral: true });
             }
 
             if (!ticketData[channel.id]) ticketData[channel.id] = { claimers: [] };
