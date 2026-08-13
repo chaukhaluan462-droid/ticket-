@@ -570,7 +570,7 @@ client.on('interactionCreate', async interaction => {
             const channel = await guild.channels.create({
                 name: `ticket-${user.username}`,
                 type: ChannelType.GuildText,
-                parent: '1527855907109736528',
+                parent: '1535877012999110707',
                 position: 99, 
                 permissionOverwrites: [
                     { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
