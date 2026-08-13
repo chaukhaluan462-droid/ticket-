@@ -176,14 +176,15 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        if (interaction.customId === 'create_report_ticket') {
+      if (interaction.customId === 'create_report_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_report_form').setTitle('🚨 REPORT SCAMMER');
             modal.addComponents(
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder().setCustomId('scammer_name').setLabel('Tên hoặc ID đối tượng bị tố cáo').setStyle(TextInputStyle.Short).setPlaceholder('Nhập tên/link/ID Discord kẻ lừa đảo...').setRequired(true)
                 ),
                 new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('scammer_proof').setLabel('Bằng chứng / Chi tiết sự việc').setStyle(TextInputStyle.Paragraph).setPlaceholder('Mô tả chi tiết và đính kèm link hình ảnh/video bằng chứng...').setRequired(true)
+                    // Sửa dòng placeholder ở đây để hướng dẫn người dùng nhập mô tả chữ trước
+                    new TextInputBuilder().setCustomId('scammer_proof').setLabel('Mô tả chi tiết sự việc').setStyle(TextInputStyle.Paragraph).setPlaceholder('Mô tả sự việc. Bạn có thể gửi ảnh/video trực tiếp vào kênh ticket sau khi tạo!').setRequired(true)
                 )
             );
             await interaction.showModal(modal);
@@ -311,8 +312,9 @@ client.on('interactionCreate', async interaction => {
                             member.roles.cache.has(MANAGER_ROLE_ID) || 
                             member.permissions.has(PermissionsBitField.Flags.Administrator);
 
-            // KIỂM TRA: Chỉ người mở ticket (opener) hoặc Staff mới được bấm đóng
-            if (interaction.user.id !== data.openerId && !isStaff) {
+            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
+
+            if (!isOpener && !isStaff) {
                 return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền thao tác đóng vé này!', ephemeral: true });
             }
 
@@ -392,7 +394,10 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId.startsWith('rate_gdtg_')) {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
-            if (interaction.user.id !== data.openerId) {
+            
+            // Nếu mất dữ liệu tạm, cho phép qua hoặc kiểm tra quyền Admin
+            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
+            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
             }
 
@@ -409,7 +414,9 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId.startsWith('rate_buy_')) {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
-            if (interaction.user.id !== data.openerId) {
+            
+            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
+            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
             }
 
@@ -422,7 +429,6 @@ client.on('interactionCreate', async interaction => {
             );
             await interaction.showModal(modal);
         }
-    }
 
     if (interaction.isModalSubmit()) {
 
