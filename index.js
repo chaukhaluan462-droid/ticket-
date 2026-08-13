@@ -37,7 +37,6 @@ const completedTickets = {};
 const staffRatings = {}; 
 const userDeposits = {}; 
 
-// Hàm phụ để tạo Embed chuẩn có dòng hiển thị người đang nhận ticket
 function createTicketEmbed(data) {
     let staffText = data.claimers && data.claimers.length > 0 
         ? `<@${data.claimers[0]}>` 
@@ -65,7 +64,6 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH QUẢN LÝ TIỀN CỌC: !tiencoc @user số_tiền ---
     if (message.content.startsWith('!tiencoc')) {
         const member = message.member;
         const isStaff = member.roles.cache.has(OWNER_ROLE_ID) ||
@@ -112,7 +110,6 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [successEmbed] });
     }
 
-    // --- LỆNH KIỂM TRA TIỀN CỌC: !checkcoc @user ---
     if (message.content.startsWith('!checkcoc')) {
         const targetUser = message.mentions.users.first() || message.author;
         const currentDeposit = userDeposits[targetUser.id] || 0;
@@ -126,7 +123,6 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [checkEmbed] });
     }
 
-    // --- SETUP PANEL TICKET GỐC ---
     if (message.content === '!setup-ticket') {
         const embed = new EmbedBuilder()
             .setTitle('🎫 HỆ THỐNG TICKET DỊCH VỤ & HỖ TRỢ TRUNG TÂM')
@@ -154,7 +150,6 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         
-        // 1. Mở Modal GDTG
         if (interaction.customId === 'create_gdtg_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_gdtg_form').setTitle('📋 THÔNG TIN GIAO DỊCH TRUNG GIAN');
             modal.addComponents(
@@ -168,7 +163,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // 2. Mở Modal Mua Hàng
         if (interaction.customId === 'create_buy_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_buy_form').setTitle('🛒 THÔNG TIN MUA HÀNG');
             modal.addComponents(
@@ -182,7 +176,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // 3. Mở Modal Report Scammer
         if (interaction.customId === 'create_report_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_report_form').setTitle('🚨 REPORT SCAMMER');
             modal.addComponents(
@@ -196,7 +189,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // 4. Nhân viên bấm Claim Ticket (CHỈ 1 NGƯỜI NHẬN)
         if (interaction.customId === 'claim_ticket') {
             const member = interaction.member;
             const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
@@ -223,7 +215,6 @@ client.on('interactionCreate', async interaction => {
 
             ticketData[channel.id].claimers = [staff.id];
 
-            // Cập nhật lại giao diện tin nhắn gốc của bảng ticket
             try {
                 const messages = await channel.messages.fetch({ limit: 10 });
                 const botMessage = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.components.length > 0);
@@ -237,7 +228,6 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `✅ Bạn đã chính thức tiếp nhận ticket này!`, ephemeral: true });
         }
 
-        // 4.1. Hủy nhận ticket (Unclaim)
         if (interaction.customId === 'unclaim_ticket') {
             const channel = interaction.channel;
             const staff = interaction.user;
@@ -248,7 +238,6 @@ client.on('interactionCreate', async interaction => {
 
             ticketData[channel.id].claimers = [];
 
-            // Cập nhật lại giao diện tin nhắn gốc
             try {
                 const messages = await channel.messages.fetch({ limit: 10 });
                 const botMessage = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.components.length > 0);
@@ -262,7 +251,6 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `🔄 Bạn đã hủy tiếp nhận ticket này.`, ephemeral: true });
         }
 
-        // 4.2. Chuyển ticket cho nhân viên khác
         if (interaction.customId === 'transfer_ticket') {
             const channel = interaction.channel;
             const staff = interaction.user;
@@ -286,7 +274,6 @@ client.on('interactionCreate', async interaction => {
             return await interaction.showModal(modal);
         }
 
-        // 5. Mở Modal Thêm Người Vào Ticket
         if (interaction.customId === 'add_member_modal') {
             const member = interaction.member;
             const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
@@ -314,8 +301,9 @@ client.on('interactionCreate', async interaction => {
             return await interaction.showModal(modal);
         }
 
-        // 6. Yêu cầu Đóng Ticket
         if (interaction.customId === 'close_ticket') {
+            const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
             const member = interaction.member;
             
             const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
@@ -323,12 +311,10 @@ client.on('interactionCreate', async interaction => {
                             member.roles.cache.has(MANAGER_ROLE_ID) || 
                             member.permissions.has(PermissionsBitField.Flags.Administrator);
 
-            if (!isStaff) {
-                return interaction.reply({ content: '❌ Chỉ có Nhân viên GDTG, Seller hoặc Quản trị viên mới có quyền đóng ticket này!', ephemeral: true });
+            // KIỂM TRA: Chỉ người mở ticket (opener) hoặc Staff mới được bấm đóng
+            if (interaction.user.id !== data.openerId && !isStaff) {
+                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền thao tác đóng vé này!', ephemeral: true });
             }
-
-            const channel = interaction.channel;
-            const data = ticketData[channel.id] || { type: 'gdtg' };
 
             const optionsEmbed = new EmbedBuilder()
                 .setTitle('🔒 TÙY CHỌN ĐÓNG KÊNH TICKET')
@@ -342,17 +328,27 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ embeds: [optionsEmbed], components: [optionsRow], ephemeral: true });
         }
 
-        // 7. Đóng ngay lập tức
         if (interaction.customId === 'close_instant') {
             const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+            
+            if (interaction.user.id !== data.openerId && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền thực hiện hành động này!', ephemeral: true });
+            }
+
             await interaction.update({ content: '🚪 Kênh ticket đã được đóng theo yêu cầu.', embeds: [], components: [] });
             delete ticketData[channel.id];
             setTimeout(() => channel.delete().catch(() => {}), 3000);
         }
 
-        // 8. Mở bảng đánh giá sao cho GDTG
         if (interaction.customId === 'open_rating_panel') {
             const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+
+            if (interaction.user.id !== data.openerId) {
+                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá dịch vụ!', ephemeral: true });
+            }
+
             await interaction.update({ content: '✅ Mở bảng đánh giá chất lượng GDTG:', embeds: [], components: [] });
             const ratingEmbed = new EmbedBuilder()
                 .setTitle('⭐ ĐÁNH GIÁ DỊCH VỤ GDTG')
@@ -369,9 +365,14 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // 9. Mở bảng đánh giá sao cho Mua Hàng
         if (interaction.customId === 'open_buy_rating') {
             const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+
+            if (interaction.user.id !== data.openerId) {
+                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá sản phẩm!', ephemeral: true });
+            }
+
             await interaction.update({ content: '✅ Mở bảng đánh giá sản phẩm/mua hàng:', embeds: [], components: [] });
             const ratingEmbed = new EmbedBuilder()
                 .setTitle('🛒 ĐÁNH GIÁ DỊCH VỤ MUA HÀNG')
@@ -388,8 +389,13 @@ client.on('interactionCreate', async interaction => {
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
 
-        // Kích hoạt Modal nhập nội dung review GDTG
         if (interaction.customId.startsWith('rate_gdtg_')) {
+            const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+            if (interaction.user.id !== data.openerId) {
+                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
+            }
+
             const stars = interaction.customId.split('_')[2];
             const modal = new ModalBuilder().setCustomId(`modal_review_gdtg_${stars}`).setTitle(`Nhận xét GDTG (${stars} Sao)`);
             modal.addComponents(
@@ -400,8 +406,13 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // Kích hoạt Modal nhập nội dung review Mua Hàng
         if (interaction.customId.startsWith('rate_buy_')) {
+            const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+            if (interaction.user.id !== data.openerId) {
+                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
+            }
+
             const stars = interaction.customId.split('_')[2];
             const modal = new ModalBuilder().setCustomId(`modal_review_buy_${stars}`).setTitle(`Nhận xét Mua Hàng (${stars} Sao)`);
             modal.addComponents(
@@ -413,10 +424,8 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // --- XỬ LÝ SUBMIT TOÀN BỘ CÁC MODAL ---
     if (interaction.isModalSubmit()) {
 
-        // Xử lý submit thêm người vào ticket qua Modal
         if (interaction.customId === 'submit_add_member') {
             let rawInput = interaction.fields.getTextInputValue('target_user_id').trim();
             const targetId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
@@ -449,7 +458,6 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // Xử lý chuyển ticket cho nhân viên khác (ĐÃ SỬA HỖ TRỢ TÌM KIẾM LINH HOẠT)
         if (interaction.customId === 'submit_transfer_ticket') {
             let rawInput = interaction.fields.getTextInputValue('new_staff_id').trim();
             const targetId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
@@ -476,7 +484,6 @@ client.on('interactionCreate', async interaction => {
             
             ticketData[channel.id].claimers = [newStaffMember.id];
 
-            // Cập nhật lại giao diện tin nhắn gốc
             try {
                 const messages = await channel.messages.fetch({ limit: 10 });
                 const botMessage = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.components.length > 0);
@@ -490,7 +497,6 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: `➡️ Đã chuyển ticket thành công sang cho ${newStaffMember}!`, ephemeral: false });
         }
         
-        // 1. Submit Ticket GDTG
         if (interaction.customId === 'modal_gdtg_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -542,7 +548,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket GDTG tại kênh: ${channel}` });
         }
 
-        // 2. Submit Ticket Mua Hàng
         if (interaction.customId === 'modal_buy_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -594,7 +599,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket Mua Hàng tại kênh: ${channel}` });
         }
 
-        // 3. Submit Report Scammer
         if (interaction.customId === 'modal_report_form') {
             const guild = interaction.guild;
             const user = interaction.user;
@@ -647,7 +651,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ Đã tiếp nhận khiếu nại và chuyển báo cáo về hệ thống quản lý tại kênh: ${channel}` });
         }
 
-        // 4. Submit Đánh Giá GDTG
         if (interaction.customId.startsWith('modal_review_gdtg_')) {
             const stars = Number(interaction.customId.split('_')[3]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
@@ -684,7 +687,6 @@ client.on('interactionCreate', async interaction => {
             setTimeout(() => channel.delete().catch(() => {}), 3000);
         }
 
-        // 5. Submit Đánh Giá Mua Hàng
         if (interaction.customId.startsWith('modal_review_buy_')) {
             const stars = Number(interaction.customId.split('_')[3]);
             const reviewContent = interaction.fields.getTextInputValue('review_text');
