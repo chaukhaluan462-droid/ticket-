@@ -547,8 +547,9 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
+            // Chỉ ping người tạo, Owner và Nhân viên GDTG
             await channel.send({ 
-                content: `<@${user.id}> | <@&${OWNER_ROLE_ID}> | <@&${GDTG_STAFF_ROLE_ID}> | <@&${MANAGER_ROLE_ID}>`, 
+                content: `<@${user.id}> | <@&${OWNER_ROLE_ID}> | <@&${GDTG_STAFF_ROLE_ID}>`, 
                 embeds: [embed], 
                 components: [row1, row2] 
             });
@@ -598,8 +599,9 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
+            // Chỉ ping người tạo, Seller và Owner
             await channel.send({ 
-                content: `<@${user.id}> | <@&${SELLER_ROLE_ID}> | <@&${OWNER_ROLE_ID}> | <@&${MANAGER_ROLE_ID}>`, 
+                content: `<@${user.id}> | <@&${SELLER_ROLE_ID}> | <@&${OWNER_ROLE_ID}>`, 
                 embeds: [embed], 
                 components: [row1, row2] 
             });
@@ -640,7 +642,7 @@ client.on('interactionCreate', async (interaction) => {
             try {
                 const ownerChannel = await client.channels.fetch(ADMIN_REPORT_CHANNEL_ID);
                 if (ownerChannel) {
-                    await ownerChannel.send({ content: '@here Có report lừa đảo / sự cố khẩn cấp mới từ khách hàng!', embeds: [reportEmbed] });
+                    await ownerChannel.send({ content: `<@&${OWNER_ROLE_ID}> Có report lừa đảo / sự cố khẩn cấp mới từ khách hàng!`, embeds: [reportEmbed] });
                 }
             } catch (err) { 
                 console.error('Không thể gửi log báo cáo đến kênh quản lý:', err); 
@@ -650,8 +652,9 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_instant').setLabel('Đóng Ngay Kênh Report').setStyle(ButtonStyle.Danger).setEmoji('🚪')
             );
 
+            // Chỉ ping người tạo và Owner
             await channel.send({ 
-                content: `<@${user.id}> | <@&${OWNER_ROLE_ID}> | <@&${MANAGER_ROLE_ID}>`, 
+                content: `<@${user.id}> | <@&${OWNER_ROLE_ID}>`, 
                 embeds: [reportEmbed], 
                 components: [row] 
             });
@@ -732,4 +735,5 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 });
+
 client.login(process.env.DISCORD_TOKEN);
