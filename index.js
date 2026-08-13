@@ -22,9 +22,9 @@ const client = new Client({
 });
 
 // CẤU HÌNH ID KÊNH VÀ ROLE
-const LOG_CHANNEL_ID = '1527985466777927800';
-const GDTG_ROLE_ID = '1527975554115178506';
-const ADMIN_REPORT_CHANNEL_ID = '1536207079008899153'; // ID kênh riêng của Admin để nhận báo cáo
+const LOG_CHANNEL_ID = '1537289820504596602';
+const GDTG_ROLE_ID = '1537289094361776238';
+const ADMIN_REPORT_CHANNEL_ID = '1537289410838659282'; // ID kênh riêng của Admin để nhận báo cáo
 
 const ticketData = {};
 const completedTickets = {}; 
@@ -375,7 +375,7 @@ client.on('interactionCreate', async interaction => {
         // 5. Thêm Người (Chỉ Staff mới dùng được)
         if (interaction.customId === 'add_user_btn') {
             const member = interaction.member;
-            const isStaff = member.roles.cache.has(1527975554115178506) || member.permissions.has(PermissionsBitField.Flags.Administrator);
+            const isStaff = member.roles.cache.has(1537289094361776238) || member.permissions.has(PermissionsBitField.Flags.Administrator);
             if (!isStaff) {
                 return interaction.reply({ content: '❌ Chỉ có **Staff** mới có quyền thêm người vào ticket này!', ephemeral: true });
             }
