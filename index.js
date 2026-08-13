@@ -147,7 +147,7 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.on('interactionCreate', async interaction => {
+client.on('interactionCreate', async interaction => {}
     if (interaction.isButton()) {
         
         if (interaction.customId === 'create_gdtg_ticket') {
