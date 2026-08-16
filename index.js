@@ -208,9 +208,17 @@ client.on('interactionCreate', async (interaction) => {
                 ticketData[channel.id] = { type: 'gdtg', claimers: [], dealInfo: 'Không có thông tin' };
             }
 
+            // Chặn nhận đè nếu đã có người khác nhận
             if (ticketData[channel.id].claimers && ticketData[channel.id].claimers.length > 0) {
                 const currentClaimerId = ticketData[channel.id].claimers[0];
-                return interaction.reply({ content: `❌ Ticket này đã được tiếp nhận bởi <@${currentClaimerId}> trước đó rồi!`, ephemeral: true });
+                if (currentClaimerId !== staff.id) {
+                    return interaction.reply({ 
+                        content: `❌ Ticket này hiện đang được phụ trách bởi <@${currentClaimerId}> rồi! Bạn không thể nhận đè trừ khi nhân viên đó bấm hủy hoặc chuyển giao.`, 
+                        ephemeral: true 
+                    });
+                } else {
+                    return interaction.reply({ content: `⚠️ Bạn đã là người tiếp nhận ticket này từ trước rồi!`, ephemeral: true });
+                }
             }
 
             ticketData[channel.id].claimers = [staff.id];
@@ -226,7 +234,6 @@ client.on('interactionCreate', async (interaction) => {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
             }
 
-            // Gửi thông báo công khai khi nhận ticket
             await channel.send({ content: `📢 Nhân viên <@${staff.id}> đã tiếp nhận xử lý ticket này!` });
 
             return interaction.reply({ content: `✅ Bạn đã chính thức tiếp nhận ticket này!`, ephemeral: true });
@@ -242,6 +249,7 @@ client.on('interactionCreate', async (interaction) => {
 
             ticketData[channel.id].claimers = [];
 
+            // Cập nhật lại giao diện bảng điều khiển ngay khi hủy nhận
             try {
                 if (ticketData[channel.id].messageId) {
                     const botMessage = await channel.messages.fetch(ticketData[channel.id].messageId);
@@ -253,10 +261,9 @@ client.on('interactionCreate', async (interaction) => {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
             }
 
-            // Gửi thông báo công khai khi hủy nhận ticket
             await channel.send({ content: `⚠️ Nhân viên <@${staff.id}> đã hủy tiếp nhận ticket này. Ticket đang ở trạng thái chờ nhân viên khác.` });
 
-            return interaction.reply({ content: `🔄 Bạn đã hủy tiếp nhận ticket này.`, ephemeral: true });
+            return interaction.reply({ content: `🔄 Bạn đã hủy tiếp nhận ticket này thành công!`, ephemeral: true });
         }
 
         if (interaction.customId === 'transfer_ticket') {
@@ -512,7 +519,6 @@ client.on('interactionCreate', async (interaction) => {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
             }
 
-            // Gửi thông báo công khai khi chuyển ticket sang nhân viên khác
             await channel.send({ content: `➡️ Nhân viên <@${oldStaffId}> đã chuyển ticket này sang cho <@${newStaffMember.id}> tiếp tục xử lý!` });
 
             return interaction.reply({ content: `➡️ Đã chuyển ticket thành công sang cho ${newStaffMember}!`, ephemeral: false });
@@ -556,7 +562,6 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Gửi tin nhắn và lưu lại messageId
             const sentMsg = await channel.send({ 
                 content: `<@${user.id}> | <@&${OWNER_ROLE_ID}> | <@&${GDTG_STAFF_ROLE_ID}>`, 
                 embeds: [embed], 
@@ -613,7 +618,6 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Gửi tin nhắn và lưu lại messageId
             const sentMsg = await channel.send({ 
                 content: `<@${user.id}> | <@&${SELLER_ROLE_ID}> | <@&${OWNER_ROLE_ID}>`, 
                 embeds: [embed], 
@@ -675,7 +679,6 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_instant').setLabel('Đóng Ngay Kênh Report').setStyle(ButtonStyle.Danger).setEmoji('🚪')
             );
 
-            // Chỉ ping người tạo và Owner
             await channel.send({ 
                 content: `<@${user.id}> | <@&${OWNER_ROLE_ID}>`, 
                 embeds: [reportEmbed], 
