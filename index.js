@@ -225,6 +225,9 @@ client.on('interactionCreate', async (interaction) => {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
             }
 
+            // Gửi thông báo công khai khi nhận ticket
+            await channel.send({ content: `📢 Nhân viên <@${staff.id}> đã tiếp nhận xử lý ticket này!` });
+
             return interaction.reply({ content: `✅ Bạn đã chính thức tiếp nhận ticket này!`, ephemeral: true });
         }
 
@@ -247,6 +250,9 @@ client.on('interactionCreate', async (interaction) => {
             } catch (err) {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
             }
+
+            // Gửi thông báo công khai khi hủy nhận ticket
+            await channel.send({ content: `⚠️ Nhân viên <@${staff.id}> đã hủy tiếp nhận ticket này. Ticket đang ở trạng thái chờ nhân viên khác.` });
 
             return interaction.reply({ content: `🔄 Bạn đã hủy tiếp nhận ticket này.`, ephemeral: true });
         }
@@ -470,6 +476,7 @@ client.on('interactionCreate', async (interaction) => {
             let rawInput = interaction.fields.getTextInputValue('new_staff_id').trim();
             const targetId = rawInput.replace(/<@!?&?(\d+)>/g, '$1').replace(/[^0-9]/g, '');
             const channel = interaction.channel;
+            const oldStaffId = interaction.user.id;
 
             let newStaffMember = null;
             try {
@@ -501,6 +508,9 @@ client.on('interactionCreate', async (interaction) => {
             } catch (err) {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
             }
+
+            // Gửi thông báo công khai khi chuyển ticket sang nhân viên khác
+            await channel.send({ content: `➡️ Nhân viên <@${oldStaffId}> đã chuyển ticket này sang cho <@${newStaffMember.id}> tiếp tục xử lý!` });
 
             return interaction.reply({ content: `➡️ Đã chuyển ticket thành công sang cho ${newStaffMember}!`, ephemeral: false });
         }
