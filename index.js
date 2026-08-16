@@ -216,10 +216,11 @@ client.on('interactionCreate', async (interaction) => {
             ticketData[channel.id].claimers = [staff.id];
 
             try {
-                const messages = await channel.messages.fetch({ limit: 10 });
-                const botMessage = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.components.length > 0);
-                if (botMessage) {
-                    await botMessage.edit({ embeds: [createTicketEmbed(ticketData[channel.id])] });
+                if (ticketData[channel.id].messageId) {
+                    const botMessage = await channel.messages.fetch(ticketData[channel.id].messageId);
+                    if (botMessage) {
+                        await botMessage.edit({ embeds: [createTicketEmbed(ticketData[channel.id])] });
+                    }
                 }
             } catch (err) {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
@@ -242,10 +243,11 @@ client.on('interactionCreate', async (interaction) => {
             ticketData[channel.id].claimers = [];
 
             try {
-                const messages = await channel.messages.fetch({ limit: 10 });
-                const botMessage = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.components.length > 0);
-                if (botMessage) {
-                    await botMessage.edit({ embeds: [createTicketEmbed(ticketData[channel.id])] });
+                if (ticketData[channel.id].messageId) {
+                    const botMessage = await channel.messages.fetch(ticketData[channel.id].messageId);
+                    if (botMessage) {
+                        await botMessage.edit({ embeds: [createTicketEmbed(ticketData[channel.id])] });
+                    }
                 }
             } catch (err) {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
@@ -500,10 +502,11 @@ client.on('interactionCreate', async (interaction) => {
             ticketData[channel.id].claimers = [newStaffMember.id];
 
             try {
-                const messages = await channel.messages.fetch({ limit: 10 });
-                const botMessage = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.components.length > 0);
-                if (botMessage) {
-                    await botMessage.edit({ embeds: [createTicketEmbed(ticketData[channel.id])] });
+                if (ticketData[channel.id].messageId) {
+                    const botMessage = await channel.messages.fetch(ticketData[channel.id].messageId);
+                    if (botMessage) {
+                        await botMessage.edit({ embeds: [createTicketEmbed(ticketData[channel.id])] });
+                    }
                 }
             } catch (err) {
                 console.error('Không thể cập nhật tin nhắn gốc:', err);
@@ -536,15 +539,11 @@ client.on('interactionCreate', async (interaction) => {
                 ],
             });
 
-            ticketData[channel.id] = {
+            const embed = createTicketEmbed({
                 type: 'gdtg',
-                openerId: user.id,
-                opener: `<@${user.id}>`,
                 claimers: [],
                 dealInfo: `• Đối tác giao dịch: ${dealPerson}\n• Tài sản/Đồ giao dịch: ${dealItem}`
-            };
-
-            const embed = createTicketEmbed(ticketData[channel.id]);
+            });
 
             const row1 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận Ticket').setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️'),
@@ -557,12 +556,21 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Chỉ ping người tạo, Owner và Nhân viên GDTG
-            await channel.send({ 
+            // Gửi tin nhắn và lưu lại messageId
+            const sentMsg = await channel.send({ 
                 content: `<@${user.id}> | <@&${OWNER_ROLE_ID}> | <@&${GDTG_STAFF_ROLE_ID}>`, 
                 embeds: [embed], 
                 components: [row1, row2] 
             });
+
+            ticketData[channel.id] = {
+                type: 'gdtg',
+                openerId: user.id,
+                opener: `<@${user.id}>`,
+                claimers: [],
+                dealInfo: `• Đối tác giao dịch: ${dealPerson}\n• Tài sản/Đồ giao dịch: ${dealItem}`,
+                messageId: sentMsg.id
+            };
 
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket GDTG tại kênh: ${channel}` });
         }
@@ -588,15 +596,11 @@ client.on('interactionCreate', async (interaction) => {
                 ],
             });
 
-            ticketData[channel.id] = {
+            const embed = createTicketEmbed({
                 type: 'buy',
-                openerId: user.id,
-                opener: `<@${user.id}>`,
                 claimers: [],
                 dealInfo: `• Sản phẩm: ${buyItem}\n• Ghi chú: ${buyNote}`
-            };
-
-            const embed = createTicketEmbed(ticketData[channel.id]);
+            });
 
             const row1 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('claim_ticket').setLabel('Tiếp Nhận Đơn').setStyle(ButtonStyle.Success).setEmoji('🛒'),
@@ -609,12 +613,21 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
             );
 
-            // Chỉ ping người tạo, Seller và Owner
-            await channel.send({ 
+            // Gửi tin nhắn và lưu lại messageId
+            const sentMsg = await channel.send({ 
                 content: `<@${user.id}> | <@&${SELLER_ROLE_ID}> | <@&${OWNER_ROLE_ID}>`, 
                 embeds: [embed], 
                 components: [row1, row2] 
             });
+
+            ticketData[channel.id] = {
+                type: 'buy',
+                openerId: user.id,
+                opener: `<@${user.id}>`,
+                claimers: [],
+                dealInfo: `• Sản phẩm: ${buyItem}\n• Ghi chú: ${buyNote}`,
+                messageId: sentMsg.id
+            };
 
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket Mua Hàng tại kênh: ${channel}` });
         }
