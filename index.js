@@ -360,9 +360,10 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
 
+            // CHỈ CHẤP NHẬN NGƯỜI MỞ TICKET ĐƯỢC ĐÁNH GIÁ
             const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá dịch vụ!', ephemeral: true });
+            if (!isOpener) {
+                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền đánh giá dịch vụ!', ephemeral: true });
             }
 
             await interaction.update({ content: '✅ Mở bảng đánh giá chất lượng GDTG:', embeds: [], components: [] });
@@ -385,9 +386,10 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
 
+            // CHỈ CHẤP NHẬN NGƯỜI MỞ TICKET ĐƯỢC ĐÁNH GIÁ
             const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá sản phẩm!', ephemeral: true });
+            if (!isOpener) {
+                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền đánh giá sản phẩm!', ephemeral: true });
             }
 
             await interaction.update({ content: '✅ Mở bảng đánh giá sản phẩm/mua hàng:', embeds: [], components: [] });
@@ -411,7 +413,7 @@ client.on('interactionCreate', async (interaction) => {
             const data = ticketData[channel.id] || {};
             
             const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            if (!isOpener) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
             }
 
@@ -430,7 +432,7 @@ client.on('interactionCreate', async (interaction) => {
             const data = ticketData[channel.id] || {};
             
             const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            if (!isOpener) {
                 return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
             }
 
@@ -692,7 +694,6 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
-            // Tăng số lượng vouch cho các nhân viên phụ trách ticket này
             if (data.claimers && data.claimers.length > 0) {
                 data.claimers.forEach(staffId => {
                     staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
@@ -703,7 +704,7 @@ client.on('interactionCreate', async (interaction) => {
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
 
-            // Tạo chuỗi hiển thị tổng số vouch của từng staff nhận ticket
+            // Ping trực tiếp tên staff kèm theo tổng số vouch
             let totalVouchText = data.claimers && data.claimers.length > 0
                 ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
                 : 'Không có';
@@ -721,7 +722,7 @@ client.on('interactionCreate', async (interaction) => {
                             { name: '📋 Thông tin giao dịch', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chi tiết', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
                             { name: '💬 Lời nhận xét từ khách', value: reviewContent, inline: false },
-                            { name: '📈 Tổng số vouch của @staff nhận ticket', value: totalVouchText, inline: false }
+                            { name: '📈 Tổng số vouch của <@' + (data.claimers[0] || '0') + '>', value: totalVouchText, inline: false }
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
@@ -741,7 +742,6 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
-            // Tăng số lượng vouch cho các seller/staff phụ trách mua hàng
             if (data.claimers && data.claimers.length > 0) {
                 data.claimers.forEach(staffId => {
                     staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
@@ -752,7 +752,7 @@ client.on('interactionCreate', async (interaction) => {
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
 
-            // Tạo chuỗi hiển thị tổng số vouch của từng staff/seller nhận ticket
+            // Ping trực tiếp tên staff/seller kèm theo tổng số vouch
             let totalVouchText = data.claimers && data.claimers.length > 0
                 ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
                 : 'Không có';
@@ -770,7 +770,7 @@ client.on('interactionCreate', async (interaction) => {
                             { name: '📦 Thông tin sản phẩm', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chất lượng', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
                             { name: '💬 Nhận xét sản phẩm', value: reviewContent, inline: false },
-                            { name: '📈 Tổng số vouch của @staff nhận ticket', value: totalVouchText, inline: false }
+                            { name: '📈 Tổng số vouch của <@' + (data.claimers[0] || '0') + '>', value: totalVouchText, inline: false }
                         )
                         .setColor('#ffaa00')
                         .setTimestamp();
