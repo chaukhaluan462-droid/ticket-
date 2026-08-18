@@ -34,7 +34,7 @@ const SELLER_ROLE_ID = '1441449735192838245';
 // --- BỘ NHỚ LƯU TRỮ TẠM THỜI (DATABASE IN-MEMORY) ---
 const ticketData = {};
 const completedTickets = {}; 
-const staffRatings = {}; // Lưu trữ tổng số vouch của từng staff
+const staffRatings = {}; 
 const userDeposits = {}; 
 
 function createTicketEmbed(data) {
@@ -324,10 +324,11 @@ client.on('interactionCreate', async (interaction) => {
                             member.roles.cache.has(MANAGER_ROLE_ID) || 
                             member.permissions.has(PermissionsBitField.Flags.Administrator);
 
+            // Cho phép người mở ticket HOẶC staff đóng vé
             const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
 
             if (!isOpener && !isStaff) {
-                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền thao tác đóng vé này!', ephemeral: true });
+                return interaction.reply({ content: '❌ Bạn không có quyền đóng vé này!', ephemeral: true });
             }
 
             const optionsEmbed = new EmbedBuilder()
@@ -358,11 +359,21 @@ client.on('interactionCreate', async (interaction) => {
 
         if (interaction.customId === 'open_rating_panel') {
             const channel = interaction.channel;
-            const data = ticketData[channel.id] || {};
+            
+            // FIX AN TOÀN: Nếu bot chưa lưu openerId (kênh cũ), sẽ tự động gán user hiện tại làm opener để tránh lỗi chặn
+            if (!ticketData[channel.id]) {
+                ticketData[channel.id] = { openerId: interaction.user.id, opener: `<@${interaction.user.id}>`, claimers: [], dealInfo: 'Không có thông tin' };
+            } else if (!ticketData[channel.id].openerId) {
+                ticketData[channel.id].openerId = interaction.user.id;
+                ticketData[channel.id].opener = `<@${interaction.user.id}>`;
+            }
 
-            // CHỈ CHẤP NHẬN NGƯỜI MỞ TICKET ĐƯỢC ĐÁNH GIÁ
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener) {
+            const data = ticketData[channel.id];
+            const isOpener = interaction.user.id === data.openerId;
+            const isStaff = interaction.member.roles.cache.has(GDTG_STAFF_ROLE_ID) || interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+            // Cho phép người mở ticket HOẶC staff đánh giá nếu kênh cũ bị thiếu thông tin
+            if (!isOpener && !isStaff) {
                 return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền đánh giá dịch vụ!', ephemeral: true });
             }
 
@@ -384,11 +395,19 @@ client.on('interactionCreate', async (interaction) => {
 
         if (interaction.customId === 'open_buy_rating') {
             const channel = interaction.channel;
-            const data = ticketData[channel.id] || {};
+            
+            if (!ticketData[channel.id]) {
+                ticketData[channel.id] = { openerId: interaction.user.id, opener: `<@${interaction.user.id}>`, claimers: [], dealInfo: 'Không có thông tin' };
+            } else if (!ticketData[channel.id].openerId) {
+                ticketData[channel.id].openerId = interaction.user.id;
+                ticketData[channel.id].opener = `<@${interaction.user.id}>`;
+            }
 
-            // CHỈ CHẤP NHẬN NGƯỜI MỞ TICKET ĐƯỢC ĐÁNH GIÁ
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener) {
+            const data = ticketData[channel.id];
+            const isOpener = interaction.user.id === data.openerId;
+            const isStaff = interaction.member.roles.cache.has(SELLER_ROLE_ID) || interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+            if (!isOpener && !isStaff) {
                 return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền đánh giá sản phẩm!', ephemeral: true });
             }
 
@@ -409,14 +428,6 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (interaction.customId.startsWith('rate_gdtg_')) {
-            const channel = interaction.channel;
-            const data = ticketData[channel.id] || {};
-            
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener) {
-                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
-            }
-
             const stars = interaction.customId.split('_')[2];
             const modal = new ModalBuilder().setCustomId(`modal_review_gdtg_${stars}`).setTitle(`Nhận xét GDTG (${stars} Sao)`);
             modal.addComponents(
@@ -428,14 +439,6 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (interaction.customId.startsWith('rate_buy_')) {
-            const channel = interaction.channel;
-            const data = ticketData[channel.id] || {};
-            
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener) {
-                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền đánh giá!', ephemeral: true });
-            }
-
             const stars = interaction.customId.split('_')[2];
             const modal = new ModalBuilder().setCustomId(`modal_review_buy_${stars}`).setTitle(`Nhận xét Mua Hàng (${stars} Sao)`);
             modal.addComponents(
@@ -704,7 +707,6 @@ client.on('interactionCreate', async (interaction) => {
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
 
-            // Ping trực tiếp tên staff kèm theo tổng số vouch
             let totalVouchText = data.claimers && data.claimers.length > 0
                 ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
                 : 'Không có';
@@ -717,7 +719,7 @@ client.on('interactionCreate', async (interaction) => {
                     const vouchEmbed = new EmbedBuilder()
                         .setTitle('📊 VOUCH & ĐÁNH GIÁ GIAO DỊCH TRUNG GIAN (GDTG)')
                         .addFields(
-                            { name: '👤 Người mở ticket', value: data.opener, inline: true },
+                            { name: '👤 Người mở ticket', value: data.opener || `<@${interaction.user.id}>`, inline: true },
                             { name: '🙋‍♂️ Nhân viên phụ trách', value: claimersText, inline: true },
                             { name: '📋 Thông tin giao dịch', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chi tiết', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
@@ -752,7 +754,6 @@ client.on('interactionCreate', async (interaction) => {
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
 
-            // Ping trực tiếp tên staff/seller kèm theo tổng số vouch
             let totalVouchText = data.claimers && data.claimers.length > 0
                 ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
                 : 'Không có';
@@ -765,7 +766,7 @@ client.on('interactionCreate', async (interaction) => {
                     const vouchEmbed = new EmbedBuilder()
                         .setTitle('🛒 VOUCH & ĐÁNH GIÁ MUA HÀNG / DỊCH VỤ')
                         .addFields(
-                            { name: '👤 Khách hàng mua', value: data.opener, inline: true },
+                            { name: '👤 Khách hàng mua', value: data.opener || `<@${interaction.user.id}>`, inline: true },
                             { name: '🛡️ Staff / Seller phụ trách', value: claimersText, inline: true },
                             { name: '📦 Thông tin sản phẩm', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chất lượng', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
