@@ -460,6 +460,16 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (interaction.customId.startsWith('rate_gdtg_')) {
+            const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+            const userId = interaction.user.id;
+
+            // CHỈ NGƯỜI MỞ TICKET MỚI ĐƯỢC BẤM CÁC NÚT CHỌN SAO NÀY
+            const isOpener = data.openerId ? userId === data.openerId : userId === channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
+            if (!isOpener) {
+                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền bấm chọn số sao đánh giá!', ephemeral: true });
+            }
+
             const stars = interaction.customId.split('_')[2];
             const modal = new ModalBuilder().setCustomId(`modal_review_gdtg_${stars}`).setTitle(`Nhận xét GDTG (${stars} Sao)`);
             modal.addComponents(
@@ -471,6 +481,16 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (interaction.customId.startsWith('rate_buy_')) {
+            const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+            const userId = interaction.user.id;
+
+            // CHỈ NGƯỜI MỞ TICKET MỚI ĐƯỢC BẤM CÁC NÚT CHỌN SAO NÀY
+            const isOpener = data.openerId ? userId === data.openerId : userId === channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
+            if (!isOpener) {
+                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền bấm chọn số sao đánh giá!', ephemeral: true });
+            }
+
             const stars = interaction.customId.split('_')[2];
             const modal = new ModalBuilder().setCustomId(`modal_review_buy_${stars}`).setTitle(`Nhận xét Mua Hàng (${stars} Sao)`);
             modal.addComponents(
