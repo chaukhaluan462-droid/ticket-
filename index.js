@@ -34,7 +34,7 @@ const SELLER_ROLE_ID = '1441449735192838245';
 // --- BỘ NHỚ LƯU TRỮ TẠM THỜI (DATABASE IN-MEMORY) ---
 const ticketData = {};
 const completedTickets = {}; 
-const staffRatings = {}; 
+const staffRatings = {}; // Lưu trữ tổng số vouch của từng staff
 const userDeposits = {}; 
 
 function createTicketEmbed(data) {
@@ -208,7 +208,6 @@ client.on('interactionCreate', async (interaction) => {
                 ticketData[channel.id] = { type: 'gdtg', claimers: [], dealInfo: 'Không có thông tin' };
             }
 
-            // Chặn nhận đè nếu đã có người khác nhận
             if (ticketData[channel.id].claimers && ticketData[channel.id].claimers.length > 0) {
                 const currentClaimerId = ticketData[channel.id].claimers[0];
                 if (currentClaimerId !== staff.id) {
@@ -249,7 +248,6 @@ client.on('interactionCreate', async (interaction) => {
 
             ticketData[channel.id].claimers = [];
 
-            // Cập nhật lại giao diện bảng điều khiển ngay khi hủy nhận
             try {
                 if (ticketData[channel.id].messageId) {
                     const botMessage = await channel.messages.fetch(ticketData[channel.id].messageId);
@@ -694,9 +692,21 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
+            // Tăng số lượng vouch cho các nhân viên phụ trách ticket này
+            if (data.claimers && data.claimers.length > 0) {
+                data.claimers.forEach(staffId => {
+                    staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
+                });
+            }
+
             let claimersText = data.claimers && data.claimers.length > 0 
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
+
+            // Tạo chuỗi hiển thị tổng số vouch của từng staff nhận ticket
+            let totalVouchText = data.claimers && data.claimers.length > 0
+                ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
+                : 'Không có';
 
             await interaction.reply({ content: `🎉 Cảm ơn bạn đã gửi đánh giá dịch vụ GDTG! Kênh ticket sẽ tự động đóng sau 3 giây.`, ephemeral: false });
 
@@ -710,7 +720,8 @@ client.on('interactionCreate', async (interaction) => {
                             { name: '🙋‍♂️ Nhân viên phụ trách', value: claimersText, inline: true },
                             { name: '📋 Thông tin giao dịch', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chi tiết', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
-                            { name: '💬 Lời nhận xét từ khách', value: reviewContent, inline: false }
+                            { name: '💬 Lời nhận xét từ khách', value: reviewContent, inline: false },
+                            { name: '📈 Tổng số vouch của @staff nhận ticket', value: totalVouchText, inline: false }
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
@@ -730,9 +741,21 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
+            // Tăng số lượng vouch cho các seller/staff phụ trách mua hàng
+            if (data.claimers && data.claimers.length > 0) {
+                data.claimers.forEach(staffId => {
+                    staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
+                });
+            }
+
             let claimersText = data.claimers && data.claimers.length > 0 
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
+
+            // Tạo chuỗi hiển thị tổng số vouch của từng staff/seller nhận ticket
+            let totalVouchText = data.claimers && data.claimers.length > 0
+                ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
+                : 'Không có';
 
             await interaction.reply({ content: `🎉 Cảm ơn bạn đã đánh giá dịch vụ Mua Hàng! Kênh ticket sẽ tự động đóng sau 3 giây.`, ephemeral: false });
 
@@ -746,7 +769,8 @@ client.on('interactionCreate', async (interaction) => {
                             { name: '🛡️ Staff / Seller phụ trách', value: claimersText, inline: true },
                             { name: '📦 Thông tin sản phẩm', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chất lượng', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
-                            { name: '💬 Nhận xét sản phẩm', value: reviewContent, inline: false }
+                            { name: '💬 Nhận xét sản phẩm', value: reviewContent, inline: false },
+                            { name: '📈 Tổng số vouch của @staff nhận ticket', value: totalVouchText, inline: false }
                         )
                         .setColor('#ffaa00')
                         .setTimestamp();
