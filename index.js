@@ -319,7 +319,6 @@ client.on('interactionCreate', async (interaction) => {
             const data = ticketData[channel.id] || {};
             const member = interaction.member;
             
-            // KIỂM TRA QUYỀN: CHỈ STAFF HOẶC ADMIN MỚI ĐƯỢC BẤM NÚT ĐÓNG TICKET
             const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
                             member.roles.cache.has(SELLER_ROLE_ID) ||
                             member.roles.cache.has(OWNER_ROLE_ID) || 
@@ -345,7 +344,6 @@ client.on('interactionCreate', async (interaction) => {
         if (interaction.customId === 'open_rating_panel') {
             const channel = interaction.channel;
             
-            // Cho phép Staff hoặc bất kỳ ai bấm nút này để hiện bảng chọn sao ra kênh cho khách đánh giá
             await interaction.update({ content: '✅ Đã hiển thị bảng đánh giá GDTG trong kênh:', embeds: [], components: [] });
             
             const ratingEmbed = new EmbedBuilder()
@@ -366,7 +364,6 @@ client.on('interactionCreate', async (interaction) => {
         if (interaction.customId === 'open_buy_rating') {
             const channel = interaction.channel;
             
-            // Cho phép Staff hoặc bất kỳ ai bấm nút này để hiện bảng chọn sao ra kênh cho khách đánh giá
             await interaction.update({ content: '✅ Đã hiển thị bảng đánh giá Mua Hàng trong kênh:', embeds: [], components: [] });
             
             const ratingEmbed = new EmbedBuilder()
@@ -389,7 +386,6 @@ client.on('interactionCreate', async (interaction) => {
             const data = ticketData[channel.id] || {};
             const userId = interaction.user.id;
 
-            // CHỈ NGƯỜI MỞ TICKET MỚI ĐƯỢC BẤM CÁC NÚT CHỌN SAO NÀY
             const isOpener = data.openerId ? userId === data.openerId : userId === channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
             if (!isOpener) {
                 return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền bấm chọn số sao đánh giá!', ephemeral: true });
@@ -410,7 +406,6 @@ client.on('interactionCreate', async (interaction) => {
             const data = ticketData[channel.id] || {};
             const userId = interaction.user.id;
 
-            // CHỈ NGƯỜI MỞ TICKET MỚI ĐƯỢC BẤM CÁC NÚT CHỌN SAO NÀY
             const isOpener = data.openerId ? userId === data.openerId : userId === channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
             if (!isOpener) {
                 return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền bấm chọn số sao đánh giá!', ephemeral: true });
@@ -684,8 +679,9 @@ client.on('interactionCreate', async (interaction) => {
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
 
-            let totalVouchText = data.claimers && data.claimers.length > 0
-                ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
+            let staffIdForVouch = (data.claimers && data.claimers.length > 0) ? data.claimers[0] : null;
+            let totalVouchText = staffIdForVouch 
+                ? `<@${staffIdForVouch}>: **${staffRatings[staffIdForVouch] || 1}** vouch` 
                 : 'Không có';
 
             await interaction.reply({ content: `🎉 Cảm ơn bạn đã gửi đánh giá dịch vụ GDTG! Kênh ticket sẽ tự động đóng sau 3 giây.`, ephemeral: false });
@@ -701,7 +697,7 @@ client.on('interactionCreate', async (interaction) => {
                             { name: '📋 Thông tin giao dịch', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chi tiết', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
                             { name: '💬 Lời nhận xét từ khách', value: reviewContent, inline: false },
-                            { name: '📈 Tổng số vouch của <@' + (data.claimers[0] || '0') + '>', value: totalVouchText, inline: false }
+                            { name: '📈 Tổng số vouch', value: totalVouchText, inline: false }
                         )
                         .setColor('#00ffcc')
                         .setTimestamp();
@@ -731,8 +727,9 @@ client.on('interactionCreate', async (interaction) => {
                 ? data.claimers.map(id => `<@${id}>`).join(', ') 
                 : 'Chưa có';
 
-            let totalVouchText = data.claimers && data.claimers.length > 0
-                ? data.claimers.map(id => `<@${id}>: **${staffRatings[id]}** vouch`).join('\n')
+            let staffIdForVouch = (data.claimers && data.claimers.length > 0) ? data.claimers[0] : null;
+            let totalVouchText = staffIdForVouch 
+                ? `<@${staffIdForVouch}>: **${staffRatings[staffIdForVouch] || 1}** vouch` 
                 : 'Không có';
 
             await interaction.reply({ content: `🎉 Cảm ơn bạn đã đánh giá dịch vụ Mua Hàng! Kênh ticket sẽ tự động đóng sau 3 giây.`, ephemeral: false });
@@ -748,7 +745,7 @@ client.on('interactionCreate', async (interaction) => {
                             { name: '📦 Thông tin sản phẩm', value: data.dealInfo, inline: false },
                             { name: '⭐ Đánh giá chất lượng', value: `${'⭐'.repeat(stars)} (${stars}/5 Sao)`, inline: true },
                             { name: '💬 Nhận xét sản phẩm', value: reviewContent, inline: false },
-                            { name: '📈 Tổng số vouch của <@' + (data.claimers[0] || '0') + '>', value: totalVouchText, inline: false }
+                            { name: '📈 Tổng số vouch', value: totalVouchText, inline: false }
                         )
                         .setColor('#ffaa00')
                         .setTimestamp();
