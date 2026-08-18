@@ -319,16 +319,15 @@ client.on('interactionCreate', async (interaction) => {
             const data = ticketData[channel.id] || {};
             const member = interaction.member;
             
+            // KIỂM TRA QUYỀN: CHỈ STAFF HOẶC ADMIN MỚI ĐƯỢC BẤM NÚT ĐÓNG TICKET
             const isStaff = member.roles.cache.has(GDTG_STAFF_ROLE_ID) || 
+                            member.roles.cache.has(SELLER_ROLE_ID) ||
                             member.roles.cache.has(OWNER_ROLE_ID) || 
                             member.roles.cache.has(MANAGER_ROLE_ID) || 
                             member.permissions.has(PermissionsBitField.Flags.Administrator);
 
-            // Cho phép người mở ticket HOẶC staff đóng vé
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-
-            if (!isOpener && !isStaff) {
-                return interaction.reply({ content: '❌ Bạn không có quyền đóng vé này!', ephemeral: true });
+            if (!isStaff) {
+                return interaction.reply({ content: '❌ Chỉ có nhân viên mới có quyền bấm nút đóng vé này!', ephemeral: true });
             }
 
             const optionsEmbed = new EmbedBuilder()
@@ -343,27 +342,14 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.reply({ embeds: [optionsEmbed], components: [optionsRow], ephemeral: true });
         }
 
-        if (interaction.customId === 'close_instant') {
-            const channel = interaction.channel;
-            const data = ticketData[channel.id] || {};
-            
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : true;
-            if (!isOpener && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                return interaction.reply({ content: '❌ Chỉ người mở ticket mới có quyền thực hiện hành động này!', ephemeral: true });
-            }
-
-            await interaction.update({ content: '🚪 Kênh ticket đã được đóng theo yêu cầu.', embeds: [], components: [] });
-            delete ticketData[channel.id];
-            setTimeout(() => channel.delete().catch(() => {}), 3000);
-        }
-
         if (interaction.customId === 'open_rating_panel') {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || {};
-            
-            const isOpener = data.openerId ? interaction.user.id === data.openerId : false;
+            const userId = interaction.user.id;
 
-            // CHỈ NGƯỜI MỞ TICKET MỚI ĐƯỢC ĐÁNH GIÁ, CHẶN HOÀN TOÀN STAFF
+            // KIỂM TRA QUYỀN: CHỈ NGƯỜI MỞ TICKET (KHÁCH) MỚI ĐƯỢC ĐÁNH GIÁ
+            const isOpener = data.openerId ? userId === data.openerId : userId === channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
+
             if (!isOpener) {
                 return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền đánh giá dịch vụ!', ephemeral: true });
             }
@@ -379,7 +365,35 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId('rate_gdtg_2').setLabel('⭐⭐ 2').setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder().setCustomId('rate_gdtg_3').setLabel('⭐⭐⭐ 3').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('rate_gdtg_4').setLabel('⭐⭐⭐⭐ 4').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('rate_gdtg_5').setLabel('⭐⭐⭐⭐⭐ 5').setStyle(ButtonStyle.Success),
+                newButtonBuilder().setCustomId('rate_gdtg_5').setLabel('⭐⭐⭐⭐⭐ 5').setStyle(ButtonStyle.Success),
+            );
+            await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
+        }
+
+        if (interaction.customId === 'open_buy_rating') {
+            const channel = interaction.channel;
+            const data = ticketData[channel.id] || {};
+            const userId = interaction.user.id;
+
+            // KIỂM TRA QUYỀN: CHỈ NGƯỜI MỞ TICKET (KHÁCH) MỚI ĐƯỢC ĐÁNH GIÁ
+            const isOpener = data.openerId ? userId === data.openerId : userId === channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
+
+            if (!isOpener) {
+                return interaction.reply({ content: '❌ Chỉ có người mở ticket mới có quyền đánh giá sản phẩm!', ephemeral: true });
+            }
+
+            await interaction.update({ content: '✅ Mở bảng đánh giá sản phẩm/mua hàng:', embeds: [], components: [] });
+            const ratingEmbed = new EmbedBuilder()
+                .setTitle('🛒 ĐÁNH GIÁ DỊCH VỤ MUA HÀNG')
+                .setDescription('Vui lòng chọn số sao để đánh giá sản phẩm và trải nghiệm mua hàng:')
+                .setColor('#00ffcc');
+
+            const ratingRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('rate_buy_1').setLabel('⭐ 1').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('rate_buy_2').setLabel('⭐⭐ 2').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('rate_buy_3').setLabel('⭐⭐⭐ 3').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('rate_buy_4').setLabel('⭐⭐⭐⭐ 4').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('rate_buy_5').setLabel('⭐⭐⭐⭐⭐ 5').setStyle(ButtonStyle.Success),
             );
             await channel.send({ embeds: [ratingEmbed], components: [ratingRow] });
         }
