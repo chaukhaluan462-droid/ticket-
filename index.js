@@ -10,7 +10,7 @@ const {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle
-} = require('discord.js');[cite: 2]
+} = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -19,7 +19,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers
     ]
-});[cite: 2]
+});
 
 // --- CẤU HÌNH ID KÊNH & ROLE HỆ THỐNG ---
 const VOUCH_LOG_CHANNEL_ID = '1537333769189720147';       
@@ -32,13 +32,11 @@ const GDTG_STAFF_ROLE_ID = '1440714450247090257';
 const SELLER_ROLE_ID = '1441449735192838245';           
 
 // --- BỘ NHỚ LƯU TRỮ TẠM THỜI (DATABASE IN-MEMORY) ---
-const ticketData = {};[cite: 2]
-const completedTickets = {};[cite: 2]
-const staffRatings = {};[cite: 2]
-const userDeposits = {};[cite: 2]
-
-// Bổ sung kho lưu trữ thống kê số kèo và tổng sao của staff
-const staffStats = {}; // Cấu trúc: { userId: { completedDeals: 0, totalStars: 0, ratingCount: 0 } }
+const ticketData = {};
+const completedTickets = {};
+const staffRatings = {};
+const userDeposits = {};
+const staffStats = {}; // { userId: { completedDeals: 0, totalStars: 0, ratingCount: 0 } }
 
 function createTicketEmbed(data) {
     let staffText = data.claimers && data.claimers.length > 0 
@@ -58,20 +56,20 @@ function createTicketEmbed(data) {
         .setTimestamp();
 
     return embed;
-}[cite: 2]
+}
 
 client.once('ready', () => {
     console.log(`Bot Discord đã khởi động thành công với tên: ${client.user.tag}`);
-});[cite: 2]
+});
 
 client.on('messageCreate', async message => {
-    if (message.author.bot) return;[cite: 2]
+    if (message.author.bot) return;
 
     // Lệnh xem Top Tiền Cọc
     if (message.content === '!topcoc') {
         const sortedDeposits = Object.entries(userDeposits)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 10); // Lấy top 10
+            .slice(0, 10);
 
         let desc = sortedDeposits.length > 0 
             ? sortedDeposits.map((item, index) => `**#${index + 1}** - <@${item[0]}>: **${item[1].toLocaleString('vi-VN')}** VNĐ`).join('\n')
@@ -190,7 +188,7 @@ client.on('messageCreate', async message => {
         await message.channel.send({ embeds: [embed], components: [row] });
         await message.delete().catch(() => {});
     }
-});[cite: 2]
+});
 
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
@@ -724,7 +722,6 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
-            // Cập nhật thống kê chỉ số cho Staff phụ trách GDTG
             if (data.claimers && data.claimers.length > 0) {
                 data.claimers.forEach(staffId => {
                     staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
@@ -778,7 +775,6 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
-            // Cập nhật thống kê chỉ số cho Staff/Seller phụ trách Mua Hàng
             if (data.claimers && data.claimers.length > 0) {
                 data.claimers.forEach(staffId => {
                     staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
@@ -826,6 +822,6 @@ client.on('interactionCreate', async (interaction) => {
             setTimeout(() => channel.delete().catch(() => {}), 3000);
         }
     }
-});[cite: 2]
+});
 
 client.login(process.env.DISCORD_TOKEN);
