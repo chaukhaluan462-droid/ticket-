@@ -828,4 +828,4 @@ client.on('interactionCreate', async (interaction) => {
     }
 });[cite: 2]
 
-client.login(process.env.DISCORD_TOKEN)
+client.login(process.env.DISCORD_TOKEN);
