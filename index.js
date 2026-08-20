@@ -10,7 +10,7 @@ const {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle
-} = require('discord.js');
+} = require('discord.js');[cite: 2]
 
 const client = new Client({
     intents: [
@@ -19,7 +19,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers
     ]
-});
+});[cite: 2]
 
 // --- CẤU HÌNH ID KÊNH & ROLE HỆ THỐNG ---
 const VOUCH_LOG_CHANNEL_ID = '1537333769189720147';       
@@ -32,10 +32,13 @@ const GDTG_STAFF_ROLE_ID = '1440714450247090257';
 const SELLER_ROLE_ID = '1441449735192838245';           
 
 // --- BỘ NHỚ LƯU TRỮ TẠM THỜI (DATABASE IN-MEMORY) ---
-const ticketData = {};
-const completedTickets = {}; 
-const staffRatings = {}; 
-const userDeposits = {}; 
+const ticketData = {};[cite: 2]
+const completedTickets = {};[cite: 2]
+const staffRatings = {};[cite: 2]
+const userDeposits = {};[cite: 2]
+
+// Bổ sung kho lưu trữ thống kê số kèo và tổng sao của staff
+const staffStats = {}; // Cấu trúc: { userId: { completedDeals: 0, totalStars: 0, ratingCount: 0 } }
 
 function createTicketEmbed(data) {
     let staffText = data.claimers && data.claimers.length > 0 
@@ -55,14 +58,56 @@ function createTicketEmbed(data) {
         .setTimestamp();
 
     return embed;
-}
+}[cite: 2]
 
 client.once('ready', () => {
     console.log(`Bot Discord đã khởi động thành công với tên: ${client.user.tag}`);
-});
+});[cite: 2]
 
 client.on('messageCreate', async message => {
-    if (message.author.bot) return;
+    if (message.author.bot) return;[cite: 2]
+
+    // Lệnh xem Top Tiền Cọc
+    if (message.content === '!topcoc') {
+        const sortedDeposits = Object.entries(userDeposits)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10); // Lấy top 10
+
+        let desc = sortedDeposits.length > 0 
+            ? sortedDeposits.map((item, index) => `**#${index + 1}** - <@${item[0]}>: **${item[1].toLocaleString('vi-VN')}** VNĐ`).join('\n')
+            : 'Chưa có dữ liệu tiền cọc nào trong hệ thống.';
+
+        const topEmbed = new EmbedBuilder()
+            .setTitle('🏆 BẢNG XẾP HẠNG TIỀN CỌC GIAO DỊCH')
+            .setDescription(desc)
+            .setColor('#f1c40f')
+            .setTimestamp();
+
+        return message.reply({ embeds: [topEmbed] });
+    }
+
+    // Lệnh xem chỉ số Staff / Thành viên (!stats @user)
+    if (message.content.startsWith('!stats')) {
+        const targetUser = message.mentions.users.first() || message.author;
+        const deposit = userDeposits[targetUser.id] || 0;
+        const stats = staffStats[targetUser.id] || { completedDeals: 0, totalStars: 0, ratingCount: 0 };
+        
+        let avgRating = stats.ratingCount > 0 ? (stats.totalStars / stats.ratingCount).toFixed(1) : 'Chưa có';
+        let starDisplay = stats.ratingCount > 0 ? `${'⭐'.repeat(Math.round(avgRating))} (${avgRating}/5)` : 'Chưa có đánh giá';
+
+        const statsEmbed = new EmbedBuilder()
+            .setTitle(`📊 THÔNG TIN CHỈ SỐ GIAO DỊCH`)
+            .setDescription(`Hồ sơ thống kê của thành viên <@${targetUser.id}>:`)
+            .addFields(
+                { name: '💎 Tổng tiền cọc hiện tại', value: `**${deposit.toLocaleString('vi-VN')}** VNĐ`, inline: false },
+                { name: '🤝 Số kèo giao dịch thành công', value: `**${stats.completedDeals}** kèo`, inline: true },
+                { name: '⭐ Đánh giá trung bình', value: starDisplay, inline: true }
+            )
+            .setColor('#3498db')
+            .setTimestamp();
+
+        return message.reply({ embeds: [statsEmbed] });
+    }
 
     if (message.content.startsWith('!tiencoc')) {
         const member = message.member;
@@ -145,7 +190,7 @@ client.on('messageCreate', async message => {
         await message.channel.send({ embeds: [embed], components: [row] });
         await message.delete().catch(() => {});
     }
-});
+});[cite: 2]
 
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
@@ -339,6 +384,16 @@ client.on('interactionCreate', async (interaction) => {
                 new ButtonBuilder().setCustomId(data.type === 'buy' ? 'open_buy_rating' : 'open_rating_panel').setLabel('Đánh Giá Dịch Vụ').setStyle(ButtonStyle.Success).setEmoji('⭐')
             );
             return interaction.reply({ embeds: [optionsEmbed], components: [optionsRow], ephemeral: true });
+        }
+
+        if (interaction.customId === 'close_instant') {
+            const channel = interaction.channel;
+            
+            await interaction.reply({ content: '🚪 Đang tiến hành đóng vé ngay lập tức...', ephemeral: true });
+            
+            delete ticketData[channel.id];
+            
+            setTimeout(() => channel.delete().catch(() => {}), 2000);
         }
 
         if (interaction.customId === 'open_rating_panel') {
@@ -669,9 +724,15 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
+            // Cập nhật thống kê chỉ số cho Staff phụ trách GDTG
             if (data.claimers && data.claimers.length > 0) {
                 data.claimers.forEach(staffId => {
                     staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
+                    
+                    if (!staffStats[staffId]) staffStats[staffId] = { completedDeals: 0, totalStars: 0, ratingCount: 0 };
+                    staffStats[staffId].completedDeals += 1;
+                    staffStats[staffId].totalStars += stars;
+                    staffStats[staffId].ratingCount += 1;
                 });
             }
 
@@ -717,9 +778,15 @@ client.on('interactionCreate', async (interaction) => {
             const channel = interaction.channel;
             const data = ticketData[channel.id] || { opener: 'Không rõ', claimers: [], dealInfo: 'Không có thông tin' };
 
+            // Cập nhật thống kê chỉ số cho Staff/Seller phụ trách Mua Hàng
             if (data.claimers && data.claimers.length > 0) {
                 data.claimers.forEach(staffId => {
                     staffRatings[staffId] = (staffRatings[staffId] || 0) + 1;
+                    
+                    if (!staffStats[staffId]) staffStats[staffId] = { completedDeals: 0, totalStars: 0, ratingCount: 0 };
+                    staffStats[staffId].completedDeals += 1;
+                    staffStats[staffId].totalStars += stars;
+                    staffStats[staffId].ratingCount += 1;
                 });
             }
 
@@ -759,6 +826,6 @@ client.on('interactionCreate', async (interaction) => {
             setTimeout(() => channel.delete().catch(() => {}), 3000);
         }
     }
-});
+});[cite: 2]
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN);[cite: 2]
