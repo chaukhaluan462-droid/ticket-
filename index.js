@@ -694,14 +694,14 @@ client.on('interactionCreate', async (interaction) => {
                 .setColor('#ff0000')
                 .setTimestamp();
 
-            try {
-                const ownerChannel = await client.channels.fetch(ADMIN_REPORT_CHANNEL_ID);
+            // Gửi log ngầm, nếu lỗi cũng không làm ảnh hưởng đến việc tạo ticket
+            client.channels.fetch(ADMIN_REPORT_CHANNEL_ID).then(ownerChannel => {
                 if (ownerChannel) {
-                    await ownerChannel.send({ content: `<@&${OWNER_ROLE_ID}> Có report lừa đảo / sự cố khẩn cấp mới từ khách hàng!`, embeds: [reportEmbed] });
+                    ownerChannel.send({ content: `<@&${OWNER_ROLE_ID}> Có report lừa đảo / sự cố khẩn cấp mới từ khách hàng!`, embeds: [reportEmbed] });
                 }
-            } catch (err) { 
-                console.error('Không thể gửi log báo cáo đến kênh quản lý:', err); 
-            }
+            }).catch(err => {
+                console.error('Không thể gửi log báo cáo đến kênh quản lý (Kiểm tra lại ID kênh hoặc quyền của bot):', err);
+            });
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('close_instant').setLabel('Đóng Ngay Kênh Report').setStyle(ButtonStyle.Danger).setEmoji('🚪')
@@ -713,7 +713,7 @@ client.on('interactionCreate', async (interaction) => {
                 components: [row] 
             });
 
-            await interaction.editReply({ content: `✅ Đã tiếp nhận khiếu nại và chuyển báo cáo về hệ thống quản lý tại kênh: ${channel}` });
+            await interaction.editReply({ content: `✅ Đã tiếp nhận khiếu nại và tạo kênh thành công: ${channel}` });
         }
 
         if (interaction.customId.startsWith('modal_review_gdtg_')) {
