@@ -675,7 +675,7 @@ client.on('interactionCreate', async (interaction) => {
             const channel = await guild.channels.create({
                 name: `report-${user.username}`,
                 type: ChannelType.GuildText,
-                parent: '1527855907109736528',
+                parent: '1437994731635216434',
                 permissionOverwrites: [
                     { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                     { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
