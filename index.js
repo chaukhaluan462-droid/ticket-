@@ -12,6 +12,9 @@ const {
     TextInputStyle
 } = require('discord.js');
 
+// THÊM THƯ VIỆN XUẤT TRANSCRIPT HTML
+const discordTranscripts = require('discord-html-transcripts');
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -24,6 +27,7 @@ const client = new Client({
 // --- CẤU HÌNH ID KÊNH & ROLE HỆ THỐNG ---
 const VOUCH_LOG_CHANNEL_ID = '1537333769189720147';       
 const ADMIN_REPORT_CHANNEL_ID = '1537333911095611443';    
+const TRANSCRIPT_LOG_CHANNEL_ID = '1543271390839443536'; // <-- THÊM ID KÊNH LƯU TRANSCRIPT VÀO ĐÂY
 
 const OWNER_ROLE_ID = '1436983276777509010';             
 const MANAGER_ROLE_ID = '1437440890011521105';         
@@ -56,6 +60,35 @@ function createTicketEmbed(data) {
         .setTimestamp();
 
     return embed;
+}
+
+// --- HÀM TẠO VÀ GỬI TRANSCRIPT HTML ---
+async function saveAndSendTranscript(channel, closedByUser) {
+    try {
+        const attachment = await discordTranscripts.createTranscript(channel, {
+            limit: -1, // Lấy toàn bộ tin nhắn
+            returnType: 'attachment',
+            filename: `transcript-${channel.name}.html`,
+            saveImages: true, // Lưu lại ảnh trong file HTML
+            poweredBy: false
+        });
+
+        const transcriptChannel = channel.guild.channels.cache.get(TRANSCRIPT_LOG_CHANNEL_ID);
+        if (transcriptChannel) {
+            const embed = new EmbedBuilder()
+                .setTitle("📁 NHẬT KÝ TRANSCRIPT TICKET")
+                .setColor('#2F3136')
+                .addFields(
+                    { name: "Tên Kênh", value: `\`${channel.name}\``, inline: true },
+                    { name: "Đóng bởi", value: `<@${closedByUser.id}>`, inline: true }
+                )
+                .setTimestamp();
+
+            await transcriptChannel.send({ embeds: [embed], files: [attachment] });
+        }
+    } catch (e) {
+        console.error("Lỗi khi xuất transcript HTML:", e);
+    }
 }
 
 client.once('ready', () => {
@@ -387,8 +420,11 @@ client.on('interactionCreate', async (interaction) => {
         if (interaction.customId === 'close_instant') {
             const channel = interaction.channel;
             
-            await interaction.reply({ content: '🚪 Đang tiến hành đóng vé ngay lập tức...', ephemeral: true });
+            await interaction.reply({ content: '🚪 Đang tiến hành lưu transcript và đóng vé ngay lập tức...', ephemeral: true });
             
+            // XUẤT VÀ GỬI TRANSCRIPT TRƯỚC KHI XÓA
+            await saveAndSendTranscript(channel, interaction.user);
+
             delete ticketData[channel.id];
             
             setTimeout(() => channel.delete().catch(() => {}), 2000);
@@ -742,7 +778,7 @@ client.on('interactionCreate', async (interaction) => {
                 ? `<@${staffIdForVouch}>: **${staffRatings[staffIdForVouch] || 1}** vouch` 
                 : 'Không có';
 
-            await interaction.reply({ content: `🎉 Cảm ơn bạn đã gửi đánh giá dịch vụ GDTG! Kênh ticket sẽ tự động đóng sau 3 giây.`, ephemeral: false });
+            await interaction.reply({ content: `🎉 Cảm ơn bạn đã gửi đánh giá dịch vụ GDTG! Kênh ticket sẽ tự động lưu file html và đóng sau vài giây...`, ephemeral: false });
 
             try {
                 const vouchChannel = await client.channels.fetch(VOUCH_LOG_CHANNEL_ID);
@@ -764,6 +800,9 @@ client.on('interactionCreate', async (interaction) => {
             } catch (err) { 
                 console.error('Lỗi khi gửi vouch log GDTG:', err); 
             }
+
+            // XUẤT VÀ GỬI TRANSCRIPT TRƯỚC KHI XÓA
+            await saveAndSendTranscript(channel, interaction.user);
 
             delete ticketData[channel.id];
             setTimeout(() => channel.delete().catch(() => {}), 3000);
@@ -795,7 +834,7 @@ client.on('interactionCreate', async (interaction) => {
                 ? `<@${staffIdForVouch}>: **${staffRatings[staffIdForVouch] || 1}** vouch` 
                 : 'Không có';
 
-            await interaction.reply({ content: `🎉 Cảm ơn bạn đã đánh giá dịch vụ Mua Hàng! Kênh ticket sẽ tự động đóng sau 3 giây.`, ephemeral: false });
+            await interaction.reply({ content: `🎉 Cảm ơn bạn đã đánh giá dịch vụ Mua Hàng! Kênh ticket sẽ tự động lưu file html và đóng sau vài giây...`, ephemeral: false });
 
             try {
                 const vouchChannel = await client.channels.fetch(VOUCH_LOG_CHANNEL_ID);
@@ -817,6 +856,9 @@ client.on('interactionCreate', async (interaction) => {
             } catch (err) { 
                 console.error('Lỗi khi gửi vouch log mua hàng:', err); 
             }
+
+            // XUẤT VÀ GỬI TRANSCRIPT TRƯỚC KHI XÓA
+            await saveAndSendTranscript(channel, interaction.user);
 
             delete ticketData[channel.id];
             setTimeout(() => channel.delete().catch(() => {}), 3000);
