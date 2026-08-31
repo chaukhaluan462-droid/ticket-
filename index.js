@@ -305,7 +305,6 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
         
-        // --- XỬ LÝ SỰ KIỆN KHI BẤM CÁC NÚT QR ---
         if (interaction.customId === 'qr_tuna') {
             const tunaEmbed = new EmbedBuilder()
                 .setTitle('💳 THÔNG TIN THANH TOÁN - TUNA')
@@ -314,7 +313,7 @@ client.on('interactionCreate', async (interaction) => {
                     { name: '🔢 Số tài khoản', value: '`19076472492011`', inline: true },
                     { name: '👤 Chủ tài khoản', value: '**NGUYEN TRONG TUNG**', inline: false }
                 )
-                .setImage('https://cdn.discordapp.com/attachments/1437994731635216434/1537333911095611443/image_043f1f.jpg') // Sử dụng ảnh trực tiếp từ Discord hoặc link ảnh mã QR
+                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/IMG_2154.jpg?ex=6a96758c&is=6a95240c&hm=b6ee7489208fcbc3df314eb46aa1879883ac8ca30d6fe244c9854953ec900b4c&=&format=webp&width=631&height=1024') // <--- Dán link ảnh thật copy từ Discord vào đây
                 .setColor('#00ffcc')
                 .setTimestamp();
 
