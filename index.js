@@ -100,25 +100,78 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR (CHỈ NGƯỜI DÙNG LỆNH MỚI THẤY) ---
-    if (message.content === '!qr') {
-        const qrEmbed = new EmbedBuilder()
-            .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
-            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR.')
-            .setColor('#3498db')
-            .setTimestamp();
+    // --- LỆNH !QR VÀ CÁC THAM SỐ (TUNA, KYEAZ, BIAHANOI) ---
+    if (message.content.startsWith('!qr')) {
+        const args = message.content.split(' ').slice(1);
+        const subCommand = args[0] ? args[0].toLowerCase() : '';
 
-        const qrRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('qr_tuna').setLabel('Tuna').setStyle(ButtonStyle.Primary).setEmoji('💳'),
-            new ButtonBuilder().setCustomId('qr_kyeaz').setLabel('Kyeaz').setStyle(ButtonStyle.Secondary).setEmoji('💳'),
-            new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
-        );
-
-        // Xóa tin nhắn lệnh !qr của người dùng trước để kênh gọn gàng
+        // Xóa tin nhắn lệnh của người dùng để kênh gọn gàng
         message.delete().catch(() => {});
 
-        // Gửi tin nhắn ẩn (ephemeral: true) - Chỉ người dùng lệnh mới nhìn thấy bảng này
-        return message.reply({ embeds: [qrEmbed], components: [qrRow], ephemeral: true });
+        // 1. Nếu chỉ gõ mỗi "!qr" -> Gửi bảng hướng dẫn cú pháp (ẩn - ephemeral)
+        if (!subCommand) {
+            const qrHelpEmbed = new EmbedBuilder()
+                .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
+                .setDescription('Vui lòng sử dụng cú pháp đầy đủ để xem thông tin QR tương ứng:\n' +
+                                '• `!qr tuna` - Xem thông tin của Tuna\n' +
+                                '• `!qr kyeaz` - Xem thông tin của Kyeaz\n' +
+                                '• `!qr biahanoi` - Xem thông tin của Bia Ha Noi')
+                .setColor('#3498db')
+                .setTimestamp();
+
+            return message.reply({ embeds: [qrHelpEmbed], ephemeral: true });
+        }
+
+        // 2. Nếu gõ "!qr tuna" -> Hiện thông tin của Tuna (Công khai)
+        if (subCommand === 'tuna') {
+            const tunaEmbed = new EmbedBuilder()
+                .setTitle('💳 THÔNG TIN THANH TOÁN - TUNA')
+                .addFields(
+                    { name: '🏦 Ngân hàng', value: 'Techcombank', inline: true },
+                    { name: '🔢 Số tài khoản', value: '`19076472492011`', inline: true },
+                    { name: '👤 Chủ tài khoản', value: '**NGUYEN TRONG TUNG**', inline: false }
+                )
+                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/IMG_2154.jpg?ex=6a96758c&is=6a95240c&hm=b6ee7489208fcbc3df314eb46aa1879883ac8ca30d6fe244c9854953ec900b4c&=&format=webp&width=631&height=1024') 
+                .setColor('#00ffcc')
+                .setTimestamp();
+
+            return message.channel.send({ embeds: [tunaEmbed] });
+        }
+
+        // 3. Nếu gõ "!qr kyeaz" -> Hiện thông tin của Kyeaz (Công khai)
+        if (subCommand === 'kyeaz') {
+            const kyeazEmbed = new EmbedBuilder()
+                .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ')
+                .addFields(
+                    { name: '🏦 Ngân hàng', value: 'Tên Ngân Hàng', inline: true },
+                    { name: '🔢 Số tài khoản', value: '`Số_Tài_Khoản`', inline: true },
+                    { name: '👤 Chủ tài khoản', value: '**TÊN CHỦ TÀI KHOẢN**', inline: false }
+                )
+                .setImage('LINK_ANH_QR_KYEAZ_O_DAY') // Thay link ảnh QR của Kyeaz vào đây
+                .setColor('#3498db')
+                .setTimestamp();
+
+            return message.channel.send({ embeds: [kyeazEmbed] });
+        }
+
+        // 4. Nếu gõ "!qr biahanoi" -> Hiện thông tin của Bia Ha Noi (Công khai)
+        if (subCommand === 'biahanoi') {
+            const biaEmbed = new EmbedBuilder()
+                .setTitle('🍺 THÔNG TIN THANH TOÁN - BIA HA NOI')
+                .addFields(
+                    { name: '🏦 Ngân hàng', value: 'Tên Ngân Hàng', inline: true },
+                    { name: '🔢 Số tài khoản', value: '`Số_Tài_Khoản`', inline: true },
+                    { name: '👤 Chủ tài khoản', value: '**TÊN CHỦ TÀI KHOẢN**', inline: false }
+                )
+                .setImage('LINK_ANH_QR_BIAHANOI_O_DAY') // Thay link ảnh QR của Bia Ha Noi vào đây
+                .setColor('#f1c40f')
+                .setTimestamp();
+
+            return message.channel.send({ embeds: [biaEmbed] });
+        }
+
+        // Trường hợp gõ sai tham số
+        return message.reply({ content: '❌ Không tìm thấy tên thanh toán này! Vui lòng dùng: `!qr tuna`, `!qr kyeaz` hoặc `!qr biahanoi`.', ephemeral: true });
     }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
@@ -307,29 +360,6 @@ client.on('messageCreate', async message => {
 
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
-        
-        if (interaction.customId === 'qr_tuna') {
-            const tunaEmbed = new EmbedBuilder()
-                .setTitle('💳 THÔNG TIN THANH TOÁN - TUNA')
-                .addFields(
-                    { name: '🏦 Ngân hàng', value: 'Techcombank', inline: true },
-                    { name: '🔢 Số tài khoản', value: '`19076472492011`', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**NGUYEN TRONG TUNG**', inline: false }
-                )
-                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/IMG_2154.jpg?ex=6a96758c&is=6a95240c&hm=b6ee7489208fcbc3df314eb46aa1879883ac8ca30d6fe244c9854953ec900b4c&=&format=webp&width=631&height=1024') 
-                .setColor('#00ffcc')
-                .setTimestamp();
-
-            return interaction.reply({ embeds: [tunaEmbed] }); 
-        }
-
-        if (interaction.customId === 'qr_kyeaz') {
-            return interaction.reply({ content: '⏳ Thông tin QR của **Kyeaz** đang được cập nhật!', ephemeral: true });
-        }
-
-        if (interaction.customId === 'qr_biahanoi') {
-            return interaction.reply({ content: '⏳ Thông tin QR của **Bia Ha Noi** đang được cập nhật!', ephemeral: true });
-        }
 
         if (interaction.customId === 'create_gdtg_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_gdtg_form').setTitle('📋 THÔNG TIN GIAO DỊCH TRUNG GIAN');
@@ -669,7 +699,7 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             if (!newStaffMember) {
-                return interaction.reply({ content: `❌ Không tìm thấy nhân viên **"${rawInput}"** trong server! Vui lòng nhập đúng ID hoặc tag tên.`, ephemeral: true });
+                return interaction.reply({ content: `❌ Không tìm thấy nhân viên **"${rawInput}"** trong server! Vui nhập đúng ID hoặc tag tên.`, ephemeral: true });
             }
 
             if (!ticketData[channel.id]) ticketData[channel.id] = { claimers: [] };
