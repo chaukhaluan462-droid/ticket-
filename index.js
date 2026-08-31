@@ -157,19 +157,18 @@ client.on('messageCreate', async message => {
         // 4. Nếu gõ "!qr biahanoi" -> Hiện thông tin của Bia Ha Noi (Công khai)
         if (subCommand === 'biahanoi') {
             const biaEmbed = new EmbedBuilder()
-                .setTitle('🍺 THÔNG TIN THANH TOÁN - BIA HA NOI')
+                .setTitle('💳 THÔNG TIN THANH TOÁN - BIA HA NOI')
                 .addFields(
-                    { name: '🏦 Ngân hàng', value: 'Tên Ngân Hàng', inline: true },
-                    { name: '🔢 Số tài khoản', value: '`Số_Tài_Khoản`', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**TÊN CHỦ TÀI KHOẢN**', inline: false }
+                    { name: '🏦 Ngân hàng', value: 'ZALOPAY / Ngân hàng thụ hưởng', inline: true },
+                    { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
+                    { name: '👤 Chủ tài khoản', value: '**LE DANH HUY**', inline: false }
                 )
-                .setImage('LINK_ANH_QR_BIAHANOI_O_DAY') // Thay link ảnh QR của Bia Ha Noi vào đây
+                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/image_0ec9b7.jpg') // Đã cập nhật ảnh QR của Bia Ha Noi
                 .setColor('#f1c40f')
                 .setTimestamp();
 
             return message.channel.send({ embeds: [biaEmbed] });
         }
-
         // Trường hợp gõ sai tham số
         return message.reply({ content: '❌ Không tìm thấy tên thanh toán này! Vui lòng dùng: `!qr tuna`, `!qr kyeaz` hoặc `!qr biahanoi`.', ephemeral: true });
     }
