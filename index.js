@@ -100,14 +100,11 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Khi bạn gõ !qr
+    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN) ---
     if (message.content === '!qr') {
-        // Xóa ngay tin nhắn !qr của bạn đi để kênh chat không bị rác
-        await message.delete().catch(() => {});
-
         const qrEmbed = new EmbedBuilder()
             .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
-            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR (Chỉ bạn thấy bảng này).')
+            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR.')
             .setColor('#3498db')
             .setTimestamp();
 
@@ -117,18 +114,8 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
         );
 
-        // Gửi tin nhắn thông báo riêng dạng ephemeral bằng cách dùng webhook hoặc 
-        // lưu ý: nếu dùng messageCreate thuần túy thì không ẩn được, 
-        // vì vậy chúng ta thường dùng một ephemeral message thông qua interaction phụ trợ.
-    }
-});
-
-        // Xóa tin nhắn !qr của người dùng để kênh gọn gàng
-        await message.delete().catch(() => {});
-
-        // Gửi tin nhắn chứa bảng 3 nút (Vì messageCreate không hỗ trợ ephemeral trực tiếp, 
-        // bot sẽ gửi tin nhắn công khai hoặc bạn có thể dùng interaction /slash command nếu muốn ẩn hoàn toàn với người khác)
-        return message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
+        await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
+        return message.delete().catch(() => {});
     }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
@@ -309,17 +296,13 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('create_report_ticket').setLabel('Report Scammer').setStyle(ButtonStyle.Danger).setEmoji('🚨')
         );
 
-        await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
+        await message.channel.send({ embeds: [embed], components: [row] });
         return message.delete().catch(() => {});
-    } // <--- Dấu đóng của hàm if (!qr)
+    }
 
-    // --- Các lệnh message khác ở đây... ---
-    // (ví dụ lệnh !doanhthu, !thongke,...)
-
-}); // <--- Dày này là dấu đóng chuẩn duy nhất kết thúc cho toàn bộ: client.on('messageCreate', async message => { ... });
+});
 
 client.on('interactionCreate', async (interaction) => {
-    // Code xử lý nút bấm và modal ở dưới...
     if (interaction.isButton()) {
         
         if (interaction.customId === 'qr_tuna') {
@@ -334,7 +317,6 @@ client.on('interactionCreate', async (interaction) => {
                 .setColor('#00ffcc')
                 .setTimestamp();
 
-            // Đã bỏ ephemeral: true để ai trong kênh cũng nhìn thấy mã QR được hiện ra
             return interaction.reply({ embeds: [tunaEmbed] }); 
         }
 
