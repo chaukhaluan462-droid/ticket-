@@ -99,25 +99,43 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Lệnh xem Top Tiền Cọc
+    // Lệnh tổng hợp thống kê (!thongke)
     if (message.content === '!thongke') {
+        // 1. Sắp xếp Top Tiền Cọc
         const sortedDeposits = Object.entries(userDeposits)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 10);
+            .slice(0, 5);
 
-        let desc = sortedDeposits.length > 0 
+        let topDepositDesc = sortedDeposits.length > 0 
             ? sortedDeposits.map((item, index) => `**#${index + 1}** - <@${item[0]}>: **${item[1].toLocaleString('vi-VN')}** VNĐ`).join('\n')
-            : 'Chưa có dữ liệu tiền cọc nào trong hệ thống.';
+            : 'Chưa có dữ liệu tiền cọc nào.';
 
-        const topEmbed = new EmbedBuilder()
-            .setTitle('🏆 BẢNG XẾP HẠNG TIỀN CỌC GIAO DỊCH')
-            .setDescription(desc)
+        // 2. Sắp xếp Top Vouch & Chỉ số đánh giá trung bình
+        const sortedStaffDeals = Object.entries(staffStats)
+            .sort((a, b) => b[1].completedDeals - a[1].completedDeals)
+            .slice(0, 5);
+
+        let topVouchDesc = sortedStaffDeals.length > 0
+            ? sortedStaffDeals.map((item, index) => {
+                const userId = item[0];
+                const stats = item[1];
+                const avg = stats.ratingCount > 0 ? (stats.totalStars / stats.ratingCount).toFixed(1) : '0.0';
+                return `**#${index + 1}** - <@${userId}>: **${stats.completedDeals}** vouch | ⭐ **${avg}/5**`;
+            }).join('\n')
+            : 'Chưa có dữ liệu giao dịch nào.';
+
+        const thongKeEmbed = new EmbedBuilder()
+            .setTitle('📊 BẢNG THỐNG KÊ HỆ THỐNG GIAO DỊCH')
+            .setDescription('Tổng hợp thông tin xếp hạng tiền cọc và uy tín nhân viên trong hệ thống:')
+            .addFields(
+                { name: '🏆 Top Tiền Cọc Cao Nhất', value: topDepositDesc, inline: false },
+                { name: '🤝 Top Vouch & Đánh Giá Trung Bình', value: topVouchDesc, inline: false }
+            )
             .setColor('#f1c40f')
             .setTimestamp();
 
-        return message.reply({ embeds: [topEmbed] });
+        return message.reply({ embeds: [thongKeEmbed] });
     }
-
     
     // Lệnh xem chỉ số Staff / Thành viên (!chiso @user)
     if (message.content.startsWith('!chiso')) {
@@ -732,13 +750,12 @@ client.on('interactionCreate', async (interaction) => {
                 .setColor('#ff0000')
                 .setTimestamp();
 
-            // Gửi log ngầm, nếu lỗi cũng không làm ảnh hưởng đến việc tạo ticket
             client.channels.fetch(ADMIN_REPORT_CHANNEL_ID).then(ownerChannel => {
                 if (ownerChannel) {
                     ownerChannel.send({ content: `<@&${OWNER_ROLE_ID}> Có report lừa đảo / sự cố khẩn cấp mới từ khách hàng!`, embeds: [reportEmbed] });
                 }
             }).catch(err => {
-                console.error('Không thể gửi log báo cáo đến kênh quản lý (Kiểm tra lại ID kênh hoặc quyền của bot):', err);
+                console.error('Không thể gửi log báo cáo đến kênh quản lý:', err);
             });
 
             const row = new ActionRowBuilder().addComponents(
@@ -803,7 +820,6 @@ client.on('interactionCreate', async (interaction) => {
                 console.error('Lỗi khi gửi vouch log GDTG:', err); 
             }
 
-            // XUẤT VÀ GỬI TRANSCRIPT TRƯỚC KHI XÓA
             await saveAndSendTranscript(channel, interaction.user);
 
             delete ticketData[channel.id];
@@ -859,7 +875,6 @@ client.on('interactionCreate', async (interaction) => {
                 console.error('Lỗi khi gửi vouch log mua hàng:', err); 
             }
 
-            // XUẤT VÀ GỬI TRANSCRIPT TRƯỚC KHI XÓA
             await saveAndSendTranscript(channel, interaction.user);
 
             delete ticketData[channel.id];
