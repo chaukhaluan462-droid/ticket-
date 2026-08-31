@@ -100,11 +100,11 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN, CHỈ NGƯỜI DÙNG LỆNH MỚI THẤY BẢNG) ---
+    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN, CHỈ NGƯỜI DÙNG LỆNH MỚI THẤY) ---
     if (message.content === '!qr') {
         const qrEmbed = new EmbedBuilder()
             .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
-            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR của từng cá nhân (Thông tin hiển thị riêng tư chỉ mình bạn thấy).')
+            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR.')
             .setColor('#3498db')
             .setTimestamp();
 
@@ -113,6 +113,11 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('qr_kyeaz').setLabel('Kyeaz').setStyle(ButtonStyle.Secondary).setEmoji('💳'),
             new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
         );
+
+        // Dùng ephemeral cho tương tác phản hồi lệnh tin nhắn (nếu bot hỗ trợ) hoặc gửi tin nhắn riêng cho người gọi lệnh
+        // Vì messageCreate không hỗ trợ ephemeral trực tiếp như interaction, ta sẽ dùng cách xóa tin nhắn gọi và gửi ephemeral qua tương tác nếu dùng Slash Command, 
+        // hoặc đơn giản là dùng interaction.reply ephemeral. Nếu muốn !qr ẩn với người khác, ta có thể dùng interaction command hoặc dùng cách bot gửi xong tự xóa tin nhắn gọi và hiện bảng.
+    }
 
         // Gửi tin nhắn chứa menu nút bấm, đồng thời xóa luôn tin nhắn lệnh !qr của người dùng cho gọn kênh
         await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
@@ -300,7 +305,7 @@ client.on('messageCreate', async message => {
         await message.channel.send({ embeds: [embed], components: [row] });
         await message.delete().catch(() => {});
     }
-});
+);
 
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
@@ -313,11 +318,12 @@ client.on('interactionCreate', async (interaction) => {
                     { name: '🔢 Số tài khoản', value: '`19076472492011`', inline: true },
                     { name: '👤 Chủ tài khoản', value: '**NGUYEN TRONG TUNG**', inline: false }
                 )
-                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/IMG_2154.jpg?ex=6a96758c&is=6a95240c&hm=b6ee7489208fcbc3df314eb46aa1879883ac8ca30d6fe244c9854953ec900b4c&=&format=webp&width=631&height=1024') // <--- Dán link ảnh thật copy từ Discord vào đây
+                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/IMG_2154.jpg?ex=6a96758c&is=6a95240c&hm=b6ee7489208fcbc3df314eb46aa1879883ac8ca30d6fe244c9854953ec900b4c&=&format=webp&width=631&height=1024') 
                 .setColor('#00ffcc')
                 .setTimestamp();
 
-            return interaction.reply({ embeds: [tunaEmbed], ephemeral: true });
+            // Đã bỏ ephemeral: true để ai trong kênh cũng nhìn thấy mã QR được hiện ra
+            return interaction.reply({ embeds: [tunaEmbed] }); 
         }
 
         if (interaction.customId === 'qr_kyeaz') {
