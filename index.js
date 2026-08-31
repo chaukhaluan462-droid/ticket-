@@ -100,7 +100,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN, CHỈ NGƯỜI DÙNG LỆNH MỚI THẤY) ---
+    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN) ---
     if (message.content === '!qr') {
         const qrEmbed = new EmbedBuilder()
             .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
@@ -114,14 +114,12 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
         );
 
-        // Dùng ephemeral cho tương tác phản hồi lệnh tin nhắn (nếu bot hỗ trợ) hoặc gửi tin nhắn riêng cho người gọi lệnh
-        // Vì messageCreate không hỗ trợ ephemeral trực tiếp như interaction, ta sẽ dùng cách xóa tin nhắn gọi và gửi ephemeral qua tương tác nếu dùng Slash Command, 
-        // hoặc đơn giản là dùng interaction.reply ephemeral. Nếu muốn !qr ẩn với người khác, ta có thể dùng interaction command hoặc dùng cách bot gửi xong tự xóa tin nhắn gọi và hiện bảng.
-    }
+        // Xóa tin nhắn !qr của người dùng để kênh gọn gàng
+        await message.delete().catch(() => {});
 
-        // Gửi tin nhắn chứa menu nút bấm, đồng thời xóa luôn tin nhắn lệnh !qr của người dùng cho gọn kênh
-        await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
-        return message.delete().catch(() => {});
+        // Gửi tin nhắn chứa bảng 3 nút (Vì messageCreate không hỗ trợ ephemeral trực tiếp, 
+        // bot sẽ gửi tin nhắn công khai hoặc bạn có thể dùng interaction /slash command nếu muốn ẩn hoàn toàn với người khác)
+        return message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
     }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
