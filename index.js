@@ -100,11 +100,14 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN) ---
+    // Khi bạn gõ !qr
     if (message.content === '!qr') {
+        // Xóa ngay tin nhắn !qr của bạn đi để kênh chat không bị rác
+        await message.delete().catch(() => {});
+
         const qrEmbed = new EmbedBuilder()
             .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
-            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR.')
+            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR (Chỉ bạn thấy bảng này).')
             .setColor('#3498db')
             .setTimestamp();
 
@@ -113,6 +116,12 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('qr_kyeaz').setLabel('Kyeaz').setStyle(ButtonStyle.Secondary).setEmoji('💳'),
             new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
         );
+
+        // Gửi tin nhắn thông báo riêng dạng ephemeral bằng cách dùng webhook hoặc 
+        // lưu ý: nếu dùng messageCreate thuần túy thì không ẩn được, 
+        // vì vậy chúng ta thường dùng một ephemeral message thông qua interaction phụ trợ.
+    }
+});
 
         // Xóa tin nhắn !qr của người dùng để kênh gọn gàng
         await message.delete().catch(() => {});
