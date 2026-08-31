@@ -159,7 +159,7 @@ client.on('messageCreate', async message => {
             const biaEmbed = new EmbedBuilder()
                 .setTitle('💳 THÔNG TIN THANH TOÁN - BIA HA NOI')
                 .addFields(
-                    { name: '🏦 Ngân hàng', value: 'ZALOPAY / Ngân hàng thụ hưởng', inline: true },
+                    { name: '🏦 Ngân hàng', value: 'ZALOPAY', inline: true },
                     { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
                     { name: '👤 Chủ tài khoản', value: '**LE DANH HUY**', inline: false }
                 )
