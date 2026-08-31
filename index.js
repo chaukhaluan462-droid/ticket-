@@ -100,7 +100,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN) ---
+    // --- LỆNH !QR (CHỈ NGƯỜI DÙNG LỆNH MỚI THẤY) ---
     if (message.content === '!qr') {
         const qrEmbed = new EmbedBuilder()
             .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
@@ -114,8 +114,11 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
         );
 
-        await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
-        return message.delete().catch(() => {});
+        // Xóa tin nhắn lệnh !qr của người dùng trước để kênh gọn gàng
+        message.delete().catch(() => {});
+
+        // Gửi tin nhắn ẩn (ephemeral: true) - Chỉ người dùng lệnh mới nhìn thấy bảng này
+        return message.reply({ embeds: [qrEmbed], components: [qrRow], ephemeral: true });
     }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
