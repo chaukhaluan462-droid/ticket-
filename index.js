@@ -300,12 +300,17 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('create_report_ticket').setLabel('Report Scammer').setStyle(ButtonStyle.Danger).setEmoji('🚨')
         );
 
-        await message.channel.send({ embeds: [embed], components: [row] });
-        await message.delete().catch(() => {});
-    }
-);
+        await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
+        return message.delete().catch(() => {});
+    } // <--- Dấu đóng của hàm if (!qr)
+
+    // --- Các lệnh message khác ở đây... ---
+    // (ví dụ lệnh !doanhthu, !thongke,...)
+
+}); // <--- Dày này là dấu đóng chuẩn duy nhất kết thúc cho toàn bộ: client.on('messageCreate', async message => { ... });
 
 client.on('interactionCreate', async (interaction) => {
+    // Code xử lý nút bấm và modal ở dưới...
     if (interaction.isButton()) {
         
         if (interaction.customId === 'qr_tuna') {
