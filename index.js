@@ -143,11 +143,11 @@ client.on('messageCreate', async message => {
             const kyeazEmbed = new EmbedBuilder()
                 .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ')
                 .addFields(
-                    { name: '🏦 Ngân hàng', value: 'Tên Ngân Hàng', inline: true },
-                    { name: '🔢 Số tài khoản', value: '`Số_Tài_Khoản`', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**TÊN CHỦ TÀI KHOẢN**', inline: false }
+                    { name: '🏦 Ngân hàng', value: 'ZALOPAY , Vietcombank', inline: true },
+                    { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
+                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VU MINH HIEU**', inline: false }
                 )
-                .setImage('LINK_ANH_QR_KYEAZ_O_DAY') // Thay link ảnh QR của Kyeaz vào đây
+                .setImage('https://media.discordapp.net/attachments/1444524516993929467/1543891367606878208/Screenshot_20260809_181559_Zalopay.jpg?ex=6a968462&is=6a9532e2&hm=e8c952d48912be7517a8ec67a7b3c29033fab2c253709b062a03caf36109d384&=&format=webp , https://media.discordapp.net/attachments/1444524516993929467/1543891368114520064/image-1.webp?ex=6a968462&is=6a9532e2&hm=cd393cabee6ae357c10f9095f7e0ab7c7a67f7a828a688dbe37e4dae7202f13c&=&format=webp') // Thay link ảnh QR của Kyeaz vào đây
                 .setColor('#3498db')
                 .setTimestamp();
 
