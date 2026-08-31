@@ -28,7 +28,7 @@ const client = new Client({
 // --- CẤU HÌNH ID KÊNH & ROLE HỆ THỐNG ---
 const VOUCH_LOG_CHANNEL_ID = '1537333769189720147';       
 const ADMIN_REPORT_CHANNEL_ID = '1537333911095611443';    
-const TRANSCRIPT_LOG_CHANNEL_ID = '1543271390839443536'; // <-- THÊM ID KÊNH LƯU TRANSCRIPT VÀO ĐÂY
+const TRANSCRIPT_LOG_CHANNEL_ID = '1543271390839443536'; 
 
 const OWNER_ROLE_ID = '1436983276777509010';             
 const MANAGER_ROLE_ID = '1437440890011521105';         
@@ -41,7 +41,8 @@ const ticketData = {};
 const completedTickets = {};
 const staffRatings = {};
 const userDeposits = {};
-const staffStats = {}; // { userId: { completedDeals: 0, totalStars: 0, ratingCount: 0 } }
+const staffStats = {}; 
+const ticketHistory = []; // <-- LƯU LỊCH SỬ MỞ TICKET CHO LỆNH !doanhthu
 
 function createTicketEmbed(data) {
     let staffText = data.claimers && data.claimers.length > 0 
@@ -67,10 +68,10 @@ function createTicketEmbed(data) {
 async function saveAndSendTranscript(channel, closedByUser) {
     try {
         const attachment = await discordTranscripts.createTranscript(channel, {
-            limit: -1, // Lấy toàn bộ tin nhắn
+            limit: -1, 
             returnType: 'attachment',
             filename: `transcript-${channel.name}.html`,
-            saveImages: true, // Lưu lại ảnh trong file HTML
+            saveImages: true, 
             poweredBy: false
         });
 
@@ -99,9 +100,49 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
+    // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
+    if (message.content === '!doanhthu') {
+        const member = message.member;
+        const isStaff = member.roles.cache.has(OWNER_ROLE_ID) ||
+                        member.roles.cache.has(MANAGER_ROLE_ID) ||
+                        member.permissions.has(PermissionsBitField.Flags.Administrator);
+        
+        if (!isStaff) {
+            return message.reply({ content: '❌ Bạn không có quyền sử dụng lệnh thống kê này!', ephemeral: true });
+        }
+
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const todayTickets = ticketHistory.filter(item => item.timestamp >= startOfToday.getTime());
+
+        const userOpenCounts = {};
+        todayTickets.forEach(item => {
+            userOpenCounts[item.userId] = (userOpenCounts[item.userId] || 0) + 1;
+        });
+
+        const sortedUsers = Object.entries(userOpenCounts)
+            .sort((a, b) => b[1] - a[1]);
+
+        let userListDesc = sortedUsers.length > 0
+            ? sortedUsers.map(([userId, count]) => `• <@${userId}>: **${count}** lần mở`).join('\n')
+            : 'Chưa có ai mở ticket trong ngày hôm nay.';
+
+        const doanhThuEmbed = new EmbedBuilder()
+            .setTitle('📈 THỐNG KÊ TICKET TRONG NGÀY')
+            .setDescription(`Báo cáo số liệu thống kê tính từ 00:00 hôm nay:`)
+            .addFields(
+                { name: '🎫 Tổng số ticket đã mở', value: `**${todayTickets.length}** ticket`, inline: false },
+                { name: '👥 Chi tiết người mở ticket', value: userListDesc, inline: false }
+            )
+            .setColor('#2ecc71')
+            .setTimestamp();
+
+        return message.reply({ embeds: [doanhThuEmbed] });
+    }
+
     // Lệnh tổng hợp thống kê (!thongke)
     if (message.content === '!thongke') {
-        // 1. Sắp xếp Top Tiền Cọc
         const sortedDeposits = Object.entries(userDeposits)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5);
@@ -110,7 +151,6 @@ client.on('messageCreate', async message => {
             ? sortedDeposits.map((item, index) => `**#${index + 1}** - <@${item[0]}>: **${item[1].toLocaleString('vi-VN')}** VNĐ`).join('\n')
             : 'Chưa có dữ liệu tiền cọc nào.';
 
-        // 2. Sắp xếp Top Vouch & Chỉ số đánh giá trung bình
         const sortedStaffDeals = Object.entries(staffStats)
             .sort((a, b) => b[1].completedDeals - a[1].completedDeals)
             .slice(0, 5);
@@ -442,7 +482,6 @@ client.on('interactionCreate', async (interaction) => {
             
             await interaction.reply({ content: '🚪 Đang tiến hành lưu transcript và đóng vé ngay lập tức...', ephemeral: true });
             
-            // XUẤT VÀ GỬI TRANSCRIPT TRƯỚC KHI XÓA
             await saveAndSendTranscript(channel, interaction.user);
 
             delete ticketData[channel.id];
@@ -661,6 +700,12 @@ client.on('interactionCreate', async (interaction) => {
                 messageId: sentMsg.id
             };
 
+            // Ghi nhận lịch sử mở ticket cho lệnh !doanhthu
+            ticketHistory.push({
+                userId: user.id,
+                timestamp: Date.now()
+            });
+
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket GDTG tại kênh: ${channel}` });
         }
 
@@ -717,6 +762,12 @@ client.on('interactionCreate', async (interaction) => {
                 messageId: sentMsg.id
             };
 
+            // Ghi nhận lịch sử mở ticket cho lệnh !doanhthu
+            ticketHistory.push({
+                userId: user.id,
+                timestamp: Date.now()
+            });
+
             await interaction.editReply({ content: `✅ Đã khởi tạo thành công ticket Mua Hàng tại kênh: ${channel}` });
         }
 
@@ -766,6 +817,12 @@ client.on('interactionCreate', async (interaction) => {
                 content: `<@${user.id}> | <@&${OWNER_ROLE_ID}>`, 
                 embeds: [reportEmbed], 
                 components: [row] 
+            });
+
+            // Ghi nhận lịch sử mở ticket cho lệnh !doanhthu
+            ticketHistory.push({
+                userId: user.id,
+                timestamp: Date.now()
             });
 
             await interaction.editReply({ content: `✅ Đã tiếp nhận khiếu nại và tạo kênh thành công: ${channel}` });
