@@ -100,7 +100,7 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     // Lệnh xem Top Tiền Cọc
-    if (message.content === '!topcoc') {
+    if (message.content === '!thongke') {
         const sortedDeposits = Object.entries(userDeposits)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10);
@@ -118,8 +118,9 @@ client.on('messageCreate', async message => {
         return message.reply({ embeds: [topEmbed] });
     }
 
-    // Lệnh xem chỉ số Staff / Thành viên (!stats @user)
-    if (message.content.startsWith('!stats')) {
+    
+    // Lệnh xem chỉ số Staff / Thành viên (!chiso @user)
+    if (message.content.startsWith('!chiso')) {
         const targetUser = message.mentions.users.first() || message.author;
         const deposit = userDeposits[targetUser.id] || 0;
         const stats = staffStats[targetUser.id] || { completedDeals: 0, totalStars: 0, ratingCount: 0 };
