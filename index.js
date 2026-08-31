@@ -163,7 +163,7 @@ client.on('messageCreate', async message => {
                     { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
                     { name: '👤 Chủ tài khoản', value: '**LE DANH HUY**', inline: false }
                 )
-                .setImage('https://media.discordapp.net/attachments/1426391263594287116/1543875437774639165/image_0ec9b7.jpg') // Đã cập nhật ảnh QR của Bia Ha Noi
+                .setImage('https://media.discordapp.net/attachments/1526827281006465044/1543882254416089189/IMG_2094.png?ex=6a967be5&is=6a952a65&hm=6598e0d44144ea45120bf47b2b47bbb255dc770564c19c6a3773642e56a1f327&=&format=webp&quality=lossless&width=768&height=1024') // Đã cập nhật ảnh QR của Bia Ha Noi
                 .setColor('#f1c40f')
                 .setTimestamp();
 
