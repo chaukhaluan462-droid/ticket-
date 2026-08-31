@@ -138,30 +138,20 @@ client.on('messageCreate', async message => {
             return message.channel.send({ embeds: [tunaEmbed] });
         }
 
-        // 3. Nếu gõ "!qr kyeaz" -> Hiện thông tin của Kyeaz (Công khai)
+        // 3. Nếu gõ "!qr kyeaz" -> Hiện thông tin của Kyeaz gộp chung 1 bảng
         if (subCommand === 'kyeaz') {
-            const kyeazEmbed1 = new EmbedBuilder()
-                .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ (Zalopay)')
+            const kyeazEmbed = new EmbedBuilder()
+                .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ')
+                .setDescription('• **Chủ tài khoản:** NGUYEN VU MINH HIEU\n• **Zalopay & Vietcombank:** Quét mã QR tương ứng bên dưới')
                 .addFields(
-                    { name: '🏦 Ngân hàng / Ví', value: 'Zalopay', inline: true },
-                    { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VU MINH HIEU**', inline: false }
+                    { name: '📱 QR Zalopay (Ảnh lớn)', value: 'Quét trực tiếp qua app Zalopay', inline: false }
                 )
                 .setImage('https://media.discordapp.net/attachments/1444524516993929467/1543891367606878208/Screenshot_20260809_181559_Zalopay.jpg?ex=6a968462&is=6a9532e2&hm=e8c952d48912be7517a8ec67a7b3c29033fab2c253709b062a03caf36109d384&=&format=webp') 
-                .setColor('#3498db');
-
-            const kyeazEmbed2 = new EmbedBuilder()
-                .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ (Vietcombank)')
-                .addFields(
-                    { name: '🏦 Ngân hàng / Ví', value: 'Vietcombank', inline: true },
-                    { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VU MINH HIEU**', inline: false }
-                )
-                .setImage('https://media.discordapp.net/attachments/1444524516993929467/1543891368114520064/image-1.webp?ex=6a968462&is=6a9532e2&hm=cd393cabee6ae357c10f9095f7e0ab7c7a67f7a828a688dbe37e4dae7202f13c&=&format=webp') 
-                .setColor('#f1c40f')
+                .setThumbnail('https://media.discordapp.net/attachments/1444524516993929467/1543891368114520064/image-1.webp?ex=6a968462&is=6a9532e2&hm=cd393cabee6ae357c10f9095f7e0ab7c7a67f7a828a688dbe37e4dae7202f13c&=&format=webp') // Ảnh Vietcombank sẽ hiển thị thu nhỏ ở góc phải
+                .setColor('#3498db')
                 .setTimestamp();
 
-            return message.channel.send({ embeds: [kyeazEmbed1, kyeazEmbed2] });
+            return message.channel.send({ embeds: [kyeazEmbed] });
         }
 
         // 4. Nếu gõ "!qr biahanoi" -> Hiện thông tin của Bia Ha Noi (Công khai)
