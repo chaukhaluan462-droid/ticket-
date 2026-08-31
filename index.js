@@ -42,7 +42,7 @@ const completedTickets = {};
 const staffRatings = {};
 const userDeposits = {};
 const staffStats = {}; 
-const ticketHistory = []; // <-- LƯU LỊCH SỬ MỞ TICKET CHO LỆNH !doanhthu
+const ticketHistory = []; 
 
 function createTicketEmbed(data) {
     let staffText = data.claimers && data.claimers.length > 0 
@@ -99,6 +99,25 @@ client.once('ready', () => {
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
+
+    // --- LỆNH !QR (HIỂN THỊ 3 NÚT LỰA CHỌN, CHỈ NGƯỜI DÙNG LỆNH MỚI THẤY BẢNG) ---
+    if (message.content === '!qr') {
+        const qrEmbed = new EmbedBuilder()
+            .setTitle('💳 HỆ THỐNG MÃ QR & THÔNG TIN THANH TOÁN')
+            .setDescription('Vui lòng bấm vào nút tương ứng bên dưới để xem thông tin chuyển khoản và mã QR của từng cá nhân (Thông tin hiển thị riêng tư chỉ mình bạn thấy).')
+            .setColor('#3498db')
+            .setTimestamp();
+
+        const qrRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('qr_tuna').setLabel('Tuna').setStyle(ButtonStyle.Primary).setEmoji('💳'),
+            new ButtonBuilder().setCustomId('qr_kyeaz').setLabel('Kyeaz').setStyle(ButtonStyle.Secondary).setEmoji('💳'),
+            new ButtonBuilder().setCustomId('qr_biahanoi').setLabel('Bia Ha Noi').setStyle(ButtonStyle.Secondary).setEmoji('🍺')
+        );
+
+        // Gửi tin nhắn chứa menu nút bấm, đồng thời xóa luôn tin nhắn lệnh !qr của người dùng cho gọn kênh
+        await message.channel.send({ embeds: [qrEmbed], components: [qrRow] });
+        return message.delete().catch(() => {});
+    }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
     if (message.content === '!doanhthu') {
@@ -286,6 +305,30 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
         
+        // --- XỬ LÝ SỰ KIỆN KHI BẤM CÁC NÚT QR ---
+        if (interaction.customId === 'qr_tuna') {
+            const tunaEmbed = new EmbedBuilder()
+                .setTitle('💳 THÔNG TIN THANH TOÁN - TUNA')
+                .addFields(
+                    { name: '🏦 Ngân hàng', value: 'Techcombank', inline: true },
+                    { name: '🔢 Số tài khoản', value: '`19076472492011`', inline: true },
+                    { name: '👤 Chủ tài khoản', value: '**NGUYEN TRONG TUNG**', inline: false }
+                )
+                .setImage('https://cdn.discordapp.com/attachments/1437994731635216434/1537333911095611443/image_043f1f.jpg') // Sử dụng ảnh trực tiếp từ Discord hoặc link ảnh mã QR
+                .setColor('#00ffcc')
+                .setTimestamp();
+
+            return interaction.reply({ embeds: [tunaEmbed], ephemeral: true });
+        }
+
+        if (interaction.customId === 'qr_kyeaz') {
+            return interaction.reply({ content: '⏳ Thông tin QR của **Kyeaz** đang được cập nhật!', ephemeral: true });
+        }
+
+        if (interaction.customId === 'qr_biahanoi') {
+            return interaction.reply({ content: '⏳ Thông tin QR của **Bia Ha Noi** đang được cập nhật!', ephemeral: true });
+        }
+
         if (interaction.customId === 'create_gdtg_ticket') {
             const modal = new ModalBuilder().setCustomId('modal_gdtg_form').setTitle('📋 THÔNG TIN GIAO DỊCH TRUNG GIAN');
             modal.addComponents(
@@ -700,7 +743,6 @@ client.on('interactionCreate', async (interaction) => {
                 messageId: sentMsg.id
             };
 
-            // Ghi nhận lịch sử mở ticket cho lệnh !doanhthu
             ticketHistory.push({
                 userId: user.id,
                 timestamp: Date.now()
@@ -762,7 +804,6 @@ client.on('interactionCreate', async (interaction) => {
                 messageId: sentMsg.id
             };
 
-            // Ghi nhận lịch sử mở ticket cho lệnh !doanhthu
             ticketHistory.push({
                 userId: user.id,
                 timestamp: Date.now()
@@ -819,7 +860,6 @@ client.on('interactionCreate', async (interaction) => {
                 components: [row] 
             });
 
-            // Ghi nhận lịch sử mở ticket cho lệnh !doanhthu
             ticketHistory.push({
                 userId: user.id,
                 timestamp: Date.now()
