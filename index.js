@@ -144,7 +144,7 @@ client.on('messageCreate', async message => {
                 .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ (ZaloPay)')
                 .addFields(
                     { name: '🏦 Hình thức', value: 'ZaloPay', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VU MINH HIEU**', inline: true }
+                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VAN MINH HIEU**', inline: true }
                 )
                 .setImage('https://media.discordapp.net/attachments/1444524516993929467/1543891367606878208/Screenshot_20260809_181559_Zalopay.jpg?ex=6a968462&is=6a9532e2&hm=e8c952d48912be7517a8ec67a7b3c29033fab2c253709b062a03caf36109d384&=&format=webp') 
                 .setColor('#3498db');
