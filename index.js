@@ -153,7 +153,7 @@ client.on('messageCreate', async message => {
                 .setTitle('💳 THÔNG TIN THANH TOÁN - KYEAZ (Vietcombank)')
                 .addFields(
                     { name: '🏦 Hình thức', value: 'Vietcombank', inline: true },
-                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VU MINH HIEU**', inline: true }
+                    { name: '👤 Chủ tài khoản', value: '**NGUYEN VAN MINH HIEU**', inline: true }
                 )
                 .setImage('https://media.discordapp.net/attachments/1444524516993929467/1543891368114520064/image-1.webp?ex=6a968462&is=6a9532e2&hm=cd393cabee6ae357c10f9095f7e0ab7c7a67f7a828a688dbe37e4dae7202f13c&=&format=webp') 
                 .setColor('#f1c40f')
