@@ -100,7 +100,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR VÀ CÁC THAM SỐ (TUNA, KYEAZ, BIAHANOI) ---
+    // --- LỆNH !QR VÀ CÁC THAM SỐ (TUNA, KYEAZ, BIAHANOI, HOẶC QR ĐỘNG SỐ TIỀN) ---
     if (message.content.startsWith('!qr')) {
         const args = message.content.split(' ').slice(1);
         const subCommand = args[0] ? args[0].toLowerCase() : '';
@@ -115,7 +115,8 @@ client.on('messageCreate', async message => {
                 .setDescription('Vui lòng sử dụng cú pháp đầy đủ để xem thông tin QR tương ứng:\n' +
                                 '• `!qr tuna` - Xem thông tin của Tuna\n' +
                                 '• `!qr kyeaz` - Xem thông tin của Kyeaz\n' +
-                                '• `!qr biahanoi` - Xem thông tin của Bia Ha Noi')
+                                '• `!qr biahanoi` - Xem thông tin của Bia Ha Noi\n' +
+                                '• `!qr <số_tiền>` - Tạo mã QR Techcombank tự điền số tiền (Ví dụ: `!qr 15k` hoặc `!qr 50000`)')
                 .setColor('#3498db')
                 .setTimestamp();
 
@@ -171,14 +172,52 @@ client.on('messageCreate', async message => {
                     { name: '🔢 Số tài khoản', value: '`Quét mã QR trực tiếp`', inline: true },
                     { name: '👤 Chủ tài khoản', value: '**LE DANH HUY**', inline: false }
                 )
-                .setImage('https://media.discordapp.net/attachments/1526827281006465044/1543882254416089189/IMG_2094.png?ex=6a967be5&is=6a952a65&hm=6598e0d44144ea45120bf47b2b47bbb255dc770564c19c6a3773642e56a1f327&=&format=webp&quality=lossless&width=768&height=1024') // Đã cập nhật ảnh QR của Bia Ha Noi
+                .setImage('https://media.discordapp.net/attachments/1526827281006465044/1543882254416089189/IMG_2094.png?ex=6a967be5&is=6a952a65&hm=6598e0d44144ea45120bf47b2b47bbb255dc770564c19c6a3773642e56a1f327&=&format=webp&quality=lossless&width=768&height=1024') 
                 .setColor('#f1c40f')
                 .setTimestamp();
 
             return message.channel.send({ embeds: [biaEmbed] });
         }
-        // Trường hợp gõ sai tham số
-        return message.reply({ content: '❌ Không tìm thấy tên thanh toán này! Vui lòng dùng: `!qr tuna`, `!qr kyeaz` hoặc `!qr biahanoi`.', ephemeral: true });
+
+        // 5. Trường hợp người dùng nhập số tiền (Ví dụ: !qr 15k, !qr 50000) sử dụng tài khoản Techcombank của bạn
+        let rawAmount = subCommand;
+        let amount = 0;
+        
+        rawAmount = rawAmount.toLowerCase();
+        if (rawAmount.endsWith('k')) {
+            amount = parseInt(rawAmount.replace('k', '')) * 1000;
+        } else {
+            amount = parseInt(rawAmount);
+        }
+
+        if (!isNaN(amount) && amount > 0) {
+            const BANK_ID = 'TCB';                     // Techcombank
+            const ACCOUNT_NO = '19076472492011';       // Số tài khoản của bạn
+            const ACCOUNT_NAME = 'NGUYEN TRONG TUNG';  // Chủ tài khoản
+            const CONTENT = `TT DON HANG ${message.author.username}`; // Nội dung chuyển khoản
+
+            // Tạo link ảnh VietQR động gắn sẵn số tiền của Techcombank
+            const qrImageUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(CONTENT)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
+
+            const dynamicQrEmbed = new EmbedBuilder()
+                .setTitle('⚡ MÃ QR TECHCOMBANK TỰ ĐỘNG')
+                .setDescription(`Quét mã QR dưới đây bằng app Ngân hàng để thanh toán chính xác **${amount.toLocaleString('vi-VN')} VNĐ**.\n*Số tiền và nội dung đã được điền sẵn trên ứng dụng!*`)
+                .setColor('#e74c3c') // Màu đỏ đặc trưng của Techcombank
+                .setImage(qrImageUrl)
+                .addFields(
+                    { name: '🏦 Ngân Hàng', value: `**Techcombank (TCB)**`, inline: true },
+                    { name: '💰 Số Tiền', value: `**${amount.toLocaleString('vi-VN')} VNĐ**`, inline: true },
+                    { name: '📝 Nội Dung CK', value: `\`${CONTENT}\``, inline: false },
+                    { name: '👤 Chủ Tài Khoản', value: `**${ACCOUNT_NAME}**`, inline: true },
+                    { name: '🔢 Số Tài Khoản', value: `\`${ACCOUNT_NO}\``, inline: true }
+                )
+                .setTimestamp();
+
+            return message.channel.send({ embeds: [dynamicQrEmbed] });
+        }
+
+        // Nếu gõ sai hoàn toàn cú pháp
+        return message.reply({ content: '❌ Sai cú pháp! Vui lòng dùng: `!qr tuna`, `!qr kyeaz`, `!qr biahanoi` hoặc `!qr <số_tiền>` (Ví dụ: `!qr 15k`).', ephemeral: true });
     }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
