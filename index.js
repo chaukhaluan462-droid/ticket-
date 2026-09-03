@@ -100,7 +100,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // --- LỆNH !QR VÀ CÁC THAM SỐ (TUNA, KYEAZ, BIAHANOI, HOẶC QR ĐỘNG SỐ TIỀN) ---
+    // --- LỆNH !QR VÀ CÁC THAM SỐ (TUNA, KYEAZ, BIAHANOI, HOẶC QR ĐỘNG KÈM NỘI DUNG TÙY CHỈNH) ---
     if (message.content.startsWith('!qr')) {
         const args = message.content.split(' ').slice(1);
         const subCommand = args[0] ? args[0].toLowerCase() : '';
@@ -116,7 +116,8 @@ client.on('messageCreate', async message => {
                                 '• `!qr tuna` - Xem thông tin của Tuna\n' +
                                 '• `!qr kyeaz` - Xem thông tin của Kyeaz\n' +
                                 '• `!qr biahanoi` - Xem thông tin của Bia Ha Noi\n' +
-                                '• `!qr <số_tiền>` - Tạo mã QR Techcombank tự điền số tiền (Ví dụ: `!qr 15k` hoặc `!qr 50000`)')
+                                '• `!qr <số_tiền> [nội_dung]` - Tạo mã QR Techcombank kèm nội dung tùy chỉnh\n' +
+                                '  *(Ví dụ: `!qr 15k mua acc blox fruits`)*')
                 .setColor('#3498db')
                 .setTimestamp();
 
@@ -179,7 +180,7 @@ client.on('messageCreate', async message => {
             return message.channel.send({ embeds: [biaEmbed] });
         }
 
-        // 5. Trường hợp người dùng nhập số tiền (Ví dụ: !qr 15k, !qr 50000) sử dụng tài khoản Techcombank của bạn
+        // 5. Trường hợp người dùng nhập số tiền và nội dung tùy chỉnh (Ví dụ: !qr 15k mua acc)
         let rawAmount = subCommand;
         let amount = 0;
         
@@ -194,15 +195,18 @@ client.on('messageCreate', async message => {
             const BANK_ID = 'TCB';                     // Techcombank
             const ACCOUNT_NO = '19076472492011';       // Số tài khoản của bạn
             const ACCOUNT_NAME = 'NGUYEN TRONG TUNG';  // Chủ tài khoản
-            const CONTENT = `TT DON HANG ${message.author.username}`; // Nội dung chuyển khoản
 
-            // Tạo link ảnh VietQR động gắn sẵn số tiền của Techcombank
+            // Lấy phần nội dung phía sau số tiền (nếu có), nếu không nhập thì dùng mặc định
+            let customContent = args.slice(1).join(' ');
+            const CONTENT = customContent ? customContent : `TT DON HANG ${message.author.username}`;
+
+            // Tạo link ảnh VietQR động gắn sẵn số tiền và nội dung tùy chỉnh
             const qrImageUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(CONTENT)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
 
             const dynamicQrEmbed = new EmbedBuilder()
                 .setTitle('⚡ MÃ QR TECHCOMBANK TỰ ĐỘNG')
                 .setDescription(`Quét mã QR dưới đây bằng app Ngân hàng để thanh toán chính xác **${amount.toLocaleString('vi-VN')} VNĐ**.\n*Số tiền và nội dung đã được điền sẵn trên ứng dụng!*`)
-                .setColor('#e74c3c') // Màu đỏ đặc trưng của Techcombank
+                .setColor('#e74c3c')
                 .setImage(qrImageUrl)
                 .addFields(
                     { name: '🏦 Ngân Hàng', value: `**Techcombank (TCB)**`, inline: true },
@@ -217,7 +221,7 @@ client.on('messageCreate', async message => {
         }
 
         // Nếu gõ sai hoàn toàn cú pháp
-        return message.reply({ content: '❌ Sai cú pháp! Vui lòng dùng: `!qr tuna`, `!qr kyeaz`, `!qr biahanoi` hoặc `!qr <số_tiền>` (Ví dụ: `!qr 15k`).', ephemeral: true });
+        return message.reply({ content: '❌ Sai cú pháp! Vui lòng dùng: `!qr tuna`, `!qr kyeaz`, `!qr biahanoi` hoặc `!qr <số_tiền> [nội_dung]` (Ví dụ: `!qr 15k mua acc`).', ephemeral: true });
     }
 
     // Lệnh thống kê doanh thu / số lượng ticket trong ngày (!doanhthu)
