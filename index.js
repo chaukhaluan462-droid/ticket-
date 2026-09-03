@@ -180,7 +180,7 @@ client.on('messageCreate', async message => {
             return message.channel.send({ embeds: [biaEmbed] });
         }
 
-        // 5. Trường hợp người dùng nhập số tiền và nội dung tùy chỉnh (Ví dụ: !qr 15k mua acc)
+        // 5. Trường hợp người dùng nhập số tiền và nội dung tùy chỉnh (Ví dụ: !qr 15k hoặc !qr 15k mua acc)
         let rawAmount = subCommand;
         let amount = 0;
         
@@ -196,22 +196,31 @@ client.on('messageCreate', async message => {
             const ACCOUNT_NO = '19076472492011';       // Số tài khoản của bạn
             const ACCOUNT_NAME = 'NGUYEN TRONG TUNG';  // Chủ tài khoản
 
-            // Lấy phần nội dung phía sau số tiền (nếu có), nếu không nhập thì dùng mặc định
+            // Lấy phần nội dung phía sau số tiền
             let customContent = args.slice(1).join(' ');
-            const CONTENT = customContent ? customContent : `TT DON HANG ${message.author.username}`;
 
-            // Tạo link ảnh VietQR động gắn sẵn số tiền và nội dung tùy chỉnh
-            const qrImageUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(CONTENT)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
+            // Nếu có nhập nội dung thì đưa vào QR, nếu không nhập thì để trống hoàn toàn
+            let qrImageUrl = '';
+            let displayContentText = '';
+
+            if (customContent) {
+                qrImageUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(customContent)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
+                displayContentText = `\`${customContent}\``;
+            } else {
+                // Không truyền tham số addInfo thì VietQR sẽ để trống nội dung
+                qrImageUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amount}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
+                displayContentText = `*Không có nội dung*`;
+            }
 
             const dynamicQrEmbed = new EmbedBuilder()
                 .setTitle('⚡ MÃ QR TECHCOMBANK TỰ ĐỘNG')
-                .setDescription(`Quét mã QR dưới đây bằng app Ngân hàng để thanh toán chính xác **${amount.toLocaleString('vi-VN')} VNĐ**.\n*Số tiền và nội dung đã được điền sẵn trên ứng dụng!*`)
+                .setDescription(`Quét mã QR dưới đây bằng app Ngân hàng để thanh toán chính xác **${amount.toLocaleString('vi-VN')} VNĐ**.\n*Số tiền đã được điền sẵn trên ứng dụng!*`)
                 .setColor('#e74c3c')
                 .setImage(qrImageUrl)
                 .addFields(
                     { name: '🏦 Ngân Hàng', value: `**Techcombank (TCB)**`, inline: true },
                     { name: '💰 Số Tiền', value: `**${amount.toLocaleString('vi-VN')} VNĐ**`, inline: true },
-                    { name: '📝 Nội Dung CK', value: `\`${CONTENT}\``, inline: false },
+                    { name: '📝 Nội Dung CK', value: displayContentText, inline: false },
                     { name: '👤 Chủ Tài Khoản', value: `**${ACCOUNT_NAME}**`, inline: true },
                     { name: '🔢 Số Tài Khoản', value: `\`${ACCOUNT_NO}\``, inline: true }
                 )
